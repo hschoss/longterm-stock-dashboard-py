@@ -6,7 +6,7 @@ import re
 import pandas as pd
 import pytest
 
-from app.charts.plotly_charts import build_index_country_choropleth
+from app.charts.plotly_charts import build_etf_country_exposure_map, build_index_country_choropleth
 from app.services.data_service import (
     load_all_index_country_counts,
     load_index_companies,
@@ -176,9 +176,43 @@ def test_invalid_index_id_raises_clear_error():
         load_index_country_counts("not_an_index")
 
 
+def test_build_etf_country_exposure_map_returns_choropleth_figure_for_selected_index(cleaning_result):
+    country_counts = load_all_index_country_counts()
+    sp500_counts = load_index_country_counts("sp500")
+    figure = build_etf_country_exposure_map(country_counts, selected_index_id="sp500", color_metric="company_count")
+
+    assert figure is not None
+    assert len(figure.data) == 1
+    trace = figure.data[0]
+    assert trace.type == "choropleth"
+    assert trace.name == "S&P 500"
+    assert set(trace.locations) == set(sp500_counts["iso_alpha3"])
+
+
+def test_build_etf_country_exposure_map_overview_uses_choropleth_traces_only(cleaning_result):
+    country_counts = load_all_index_country_counts()
+    figure = build_etf_country_exposure_map(country_counts, selected_index_id=None, color_metric="company_count")
+
+    assert len(figure.data) >= len(TARGET_INDEX_IDS)
+    assert all(trace.type == "choropleth" for trace in figure.data)
+    assert not any(trace.type == "scattergeo" for trace in figure.data)
+
+
+def test_build_etf_country_exposure_map_hover_includes_company_and_total_weight(cleaning_result):
+    country_counts = load_index_country_counts("sp500")
+    figure = build_etf_country_exposure_map(country_counts, selected_index_id="sp500", color_metric="company_count")
+
+    trace = figure.data[0]
+    assert "Company count" in trace.hovertemplate
+    assert "Total weight %" in trace.hovertemplate
+    assert "Tax-country basis" in trace.hovertemplate
+
+
 def test_build_index_country_choropleth_returns_plotly_figure(cleaning_result):
     country_counts = load_index_country_counts("sp500")
     figure = build_index_country_choropleth(country_counts)
 
     assert figure is not None
-    assert figure.layout.coloraxis.colorbar.title.text == "Company Count"
+    assert len(figure.data) == 1
+    assert figure.data[0].type == "choropleth"
+    assert figure.data[0].colorbar.title.text == "Company count"

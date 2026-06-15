@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from flask import current_app
 
-from app.services.data_service import ensure_price_data, get_asset_by_symbol
+from app.charts.plotly_charts import DEFAULT_MAP_METRIC, INDEX_COLOR_CONFIG, VALID_MAP_METRICS, build_etf_country_exposure_map
+from app.services.data_service import ensure_price_data, get_asset_by_symbol, load_all_index_country_counts
 from app.services.stats_service import (
     align_two_normalized_series,
     calculate_exponential_regression,
@@ -168,49 +169,112 @@ def _clamp_range(start_idx: int, end_idx: int, max_index: int) -> tuple[int, int
     return start, end
 
 
-def build_world_map_figure(assets: list[dict]) -> go.Figure | dict:
+MAP_METRIC_OPTIONS = [
+    {"label": "Company count", "value": "company_count"},
+    {"label": "Security count", "value": "security_count"},
+    {"label": "Total weight %", "value": "total_weight_pct"},
+]
+MAP_METRIC_LABELS = {option["value"]: option["label"] for option in MAP_METRIC_OPTIONS}
+PREFERRED_MAP_INDEX_ORDER = ["sp500", "msci_canada", "msci_japan", "stoxx_europe_600"]
+
+
+def _build_empty_map_figure(message: str):
     if go is None:
-        return {"data": [], "layout": {"title": "ETF-Regionen auf der Weltkarte"}}
+        return {"data": [], "layout": {"title": message}}
 
-    mapped_assets = [asset for asset in assets if asset.get("lat") is not None and asset.get("lon") is not None]
     figure = go.Figure()
-    if mapped_assets:
-        figure.add_trace(
-            go.Scattergeo(
-                lon=[asset["lon"] for asset in mapped_assets],
-                lat=[asset["lat"] for asset in mapped_assets],
-                text=[
-                    f"{asset['name']}<br>{asset['symbol']}<br>{asset.get('region', '')}"
-                    for asset in mapped_assets
-                ],
-                customdata=[asset["symbol"] for asset in mapped_assets],
-                mode="markers+text",
-                textposition="top center",
-                marker={
-                    "size": 12,
-                    "opacity": 0.85,
-                    "line": {"width": 1, "color": "#16324f"},
-                    "color": "#2f7de1",
-                },
-                hovertemplate="%{text}<extra></extra>",
-            )
-        )
-
     figure.update_layout(
-        title="ETF-Regionen auf der Weltkarte",
+        title="Company exposure by country",
+        template="plotly_white",
+        height=520,
+        margin={"l": 10, "r": 10, "t": 60, "b": 10},
         geo={
             "projection_type": "natural earth",
             "showland": True,
             "showcountries": True,
             "showcoastlines": True,
-            "landcolor": "#eef3f8",
-            "countrycolor": "#b7c5d8",
-            "coastlinecolor": "#8ea1bb",
+            "landcolor": "#f8fafc",
+            "countrycolor": "#cbd5e1",
+            "coastlinecolor": "#94a3b8",
+            "showocean": True,
+            "oceancolor": "#eff6ff",
+            "bgcolor": "#f8fafc",
         },
-        margin={"l": 0, "r": 0, "t": 50, "b": 0},
-        template="plotly_white",
+        annotations=[
+            {
+                "text": message,
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 0.5,
+                "showarrow": False,
+                "font": {"size": 14, "color": "#475569"},
+            }
+        ],
     )
     return figure
+
+
+def _load_overview_country_counts() -> tuple[pd.DataFrame, str | None]:
+    try:
+        country_counts_df = load_all_index_country_counts()
+    except FileNotFoundError:
+        return pd.DataFrame(), "Country exposure data is not available yet. Run scripts/clean_index_constituents.py first."
+    except Exception as exc:
+        return pd.DataFrame(), f"Country exposure data could not be loaded: {exc}"
+
+    if country_counts_df.empty:
+        return pd.DataFrame(), "Country exposure data is empty."
+    if "index_id" not in country_counts_df.columns or "index_name" not in country_counts_df.columns:
+        return pd.DataFrame(), "Country exposure data is missing required index columns."
+
+    working = country_counts_df.copy()
+    working["index_id"] = working["index_id"].fillna("").astype(str).str.strip().str.lower()
+    working["index_name"] = working["index_name"].fillna("").astype(str).str.strip()
+    working = working[working["index_id"] != ""].copy()
+    if working.empty:
+        return pd.DataFrame(), "Country exposure data does not contain any usable index rows."
+    return working, None
+
+
+def _build_overview_index_options(country_counts_df: pd.DataFrame) -> tuple[list[dict[str, str]], str | None]:
+    if country_counts_df.empty:
+        return [], None
+
+    unique_rows = country_counts_df[["index_id", "index_name"]].drop_duplicates()
+    label_by_index_id = {
+        str(row["index_id"]): str(row["index_name"]) or INDEX_COLOR_CONFIG.get(str(row["index_id"]), {}).get("label", str(row["index_id"]))
+        for _, row in unique_rows.iterrows()
+    }
+    ordered_index_ids = [index_id for index_id in PREFERRED_MAP_INDEX_ORDER if index_id in label_by_index_id]
+    ordered_index_ids.extend(sorted(index_id for index_id in label_by_index_id if index_id not in ordered_index_ids))
+
+    options = [{"label": label_by_index_id[index_id], "value": index_id} for index_id in ordered_index_ids]
+    if len(options) > 1:
+        options.append({"label": "All", "value": "all"})
+
+    if "sp500" in label_by_index_id:
+        default_value = "sp500"
+    elif options:
+        default_value = options[0]["value"]
+    else:
+        default_value = None
+    return options, default_value
+
+
+def _build_overview_map_status(country_counts_df: pd.DataFrame, selected_index_id: str, color_metric: str) -> str:
+    metric_label = MAP_METRIC_LABELS.get(color_metric, MAP_METRIC_LABELS[DEFAULT_MAP_METRIC])
+    if selected_index_id == "all":
+        country_count = int(country_counts_df["iso_alpha3"].fillna("").astype(str).str.strip().ne("").sum()) if "iso_alpha3" in country_counts_df.columns else len(country_counts_df)
+        return f"Showing all available index datasets. Overlapping countries can visually blend. Color metric: {metric_label}. Rows shown: {country_count}."
+
+    filtered_df = country_counts_df[country_counts_df["index_id"] == selected_index_id].copy()
+    if filtered_df.empty:
+        return f"No country exposure data is available for '{selected_index_id}'."
+
+    index_name = filtered_df["index_name"].iloc[0]
+    country_count = int(filtered_df["iso_alpha3"].fillna("").astype(str).str.strip().ne("").sum()) if "iso_alpha3" in filtered_df.columns else len(filtered_df)
+    return f"Showing {index_name} colored by {metric_label}. Countries shown: {country_count}."
 
 
 def build_navbar() -> html.Nav:
@@ -242,19 +306,54 @@ def build_navbar() -> html.Nav:
 
 def build_overview_layout() -> html.Div:
     assets = current_app.config.get("TRACKED_ASSETS", [])
+    country_counts_df, load_error = _load_overview_country_counts()
+    index_options, default_index_value = _build_overview_index_options(country_counts_df)
+    initial_status = load_error or "Select an ETF / index and a metric to explore company exposure by country."
+
     return html.Div(
         [
             html.Section(
                 [
                     html.H1("Globale ETF-Uebersicht"),
                     html.P(
-                        "Die Marker zeigen repräsentative Regionen der getrackten ETFs. "
-                        "Die Ansicht dient nur der Visualisierung und ist keine Investmentberatung."
+                        "The world map colors countries by constituent company exposure using the prepared index composition data. "
+                        "Tax residence remains a proxy and is not verified legal tax-residence data."
                     ),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Label("ETF / Index"),
+                                    dcc.Dropdown(
+                                        id="overview-index-dropdown",
+                                        options=index_options,
+                                        value=default_index_value,
+                                        clearable=False,
+                                        placeholder="Index auswählen",
+                                    ),
+                                ],
+                                className="control-card",
+                            ),
+                            html.Div(
+                                [
+                                    html.Label("Color by"),
+                                    dcc.Dropdown(
+                                        id="overview-metric-dropdown",
+                                        options=MAP_METRIC_OPTIONS,
+                                        value=DEFAULT_MAP_METRIC,
+                                        clearable=False,
+                                    ),
+                                ],
+                                className="control-card",
+                            ),
+                        ],
+                        className="controls-row",
+                    ),
+                    html.Div(id="world-map-status", className="summary-card", children=initial_status),
                     dcc.Graph(
                         id="world-map",
-                        figure=build_world_map_figure(assets),
-                        config={"displayModeBar": True},
+                        figure=_build_empty_map_figure(initial_status),
+                        config={"displayModeBar": True, "responsive": True},
                     ),
                 ],
                 className="overview-section",
@@ -886,26 +985,43 @@ def register_main_dash_app(server) -> None:
     @dash_app.callback(
         Output("url", "pathname"),
         Input("asset-switcher", "value"),
-        Input("world-map", "clickData"),
         prevent_initial_call=True,
     )
-    def navigate_to_asset(symbol: str | None, click_data: dict | None):
-        if ctx is None:
-            raise PreventUpdate
+    def navigate_to_asset(symbol: str | None):
+        return "/dash/" if not symbol else f"/dash/assets/{symbol}"
 
-        trigger = ctx.triggered_id
-        if trigger == "asset-switcher":
-            return "/dash/" if not symbol else f"/dash/assets/{symbol}"
+    @dash_app.callback(
+        Output("world-map", "figure"),
+        Output("world-map-status", "children"),
+        Input("overview-index-dropdown", "value"),
+        Input("overview-metric-dropdown", "value"),
+    )
+    def update_overview_map(selected_index_id: str | None, color_metric: str | None):
+        country_counts_df, load_error = _load_overview_country_counts()
+        if load_error:
+            return _build_empty_map_figure(load_error), load_error
 
-        if trigger == "world-map":
-            if not click_data or not click_data.get("points"):
-                raise PreventUpdate
-            clicked_symbol = click_data["points"][0].get("customdata")
-            if not clicked_symbol:
-                raise PreventUpdate
-            return f"/dash/assets/{clicked_symbol}"
+        index_options, default_index_value = _build_overview_index_options(country_counts_df)
+        if not index_options or default_index_value is None:
+            message = "No ETF / index country exposure datasets are available."
+            return _build_empty_map_figure(message), message
 
-        raise PreventUpdate
+        valid_values = {option["value"] for option in index_options}
+        effective_index_id = selected_index_id if selected_index_id in valid_values else default_index_value
+        effective_metric = color_metric if color_metric in VALID_MAP_METRICS else DEFAULT_MAP_METRIC
+
+        try:
+            figure = build_etf_country_exposure_map(
+                country_counts_df,
+                selected_index_id=None if effective_index_id == "all" else effective_index_id,
+                color_metric=effective_metric,
+            )
+        except Exception as exc:
+            message = f"The world map could not be rendered: {exc}"
+            return _build_empty_map_figure(message), message
+
+        status = _build_overview_map_status(country_counts_df, effective_index_id, effective_metric)
+        return figure, status
 
     @dash_app.callback(
         Output("price-column-dropdown", "options"),

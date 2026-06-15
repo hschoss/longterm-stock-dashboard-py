@@ -1,13 +1,32 @@
 import numpy as np
 import pandas as pd
+from flask import Flask
 
 from app.dash_apps.main_dash import (
     build_asset_figure,
     build_asset_y_slider_state,
-    build_world_map_figure,
+    build_overview_layout,
     parse_compare_symbols_from_search,
     parse_symbol_from_pathname,
 )
+
+
+def _collect_component_ids(component) -> set[str]:
+    if component is None:
+        return set()
+
+    component_ids: set[str] = set()
+    component_id = getattr(component, "id", None)
+    if isinstance(component_id, str) and component_id:
+        component_ids.add(component_id)
+
+    children = getattr(component, "children", None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            component_ids.update(_collect_component_ids(child))
+    elif children is not None:
+        component_ids.update(_collect_component_ids(children))
+    return component_ids
 
 
 def test_parse_symbol_from_pathname_returns_symbol_for_detail_route():
@@ -26,21 +45,15 @@ def test_parse_compare_symbols_from_search_returns_symbols():
     assert right == "EXSA.DE"
 
 
-def test_build_world_map_figure_contains_marker_per_mapped_asset():
-    assets = [
-        {"symbol": "AAA", "name": "Alpha", "region": "Europe", "lat": 50.0, "lon": 8.0},
-        {"symbol": "BBB", "name": "Beta", "region": "Asia", "lat": 35.0, "lon": 139.0},
-        {"symbol": "CCC", "name": "Gamma", "region": "Unknown", "lat": None, "lon": None},
-    ]
+def test_build_overview_layout_includes_choropleth_controls():
+    app = Flask(__name__)
+    app.config["TRACKED_ASSETS"] = []
 
-    figure = build_world_map_figure(assets)
+    with app.app_context():
+        layout = build_overview_layout()
 
-    assert len(figure.data) == 1
-    trace = figure.data[0]
-    assert len(trace.lat) == 2
-    assert len(trace.lon) == 2
-    assert list(trace.customdata) == ["AAA", "BBB"]
-    assert np.isclose(trace.lat[0], 50.0)
+    component_ids = _collect_component_ids(layout)
+    assert {"world-map", "overview-index-dropdown", "overview-metric-dropdown", "world-map-status"}.issubset(component_ids)
 
 
 def test_build_asset_figure_applies_requested_y_axis_range():
@@ -88,4 +101,3 @@ def test_build_asset_y_slider_state_expands_flat_series_bounds():
     assert value == [min_value, max_value]
     assert len(marks) >= 2
     assert step > 0
-

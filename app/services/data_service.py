@@ -72,16 +72,18 @@ PRICE_COLUMNS = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
 REQUIRED_PRICE_COLUMNS = ["Date", "Open", "High", "Low", "Close", "Volume"]
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INDEX_CONSTITUENTS_DIR = PROJECT_ROOT / "data" / "index_constituents"
-VALID_INDEX_IDS = {"sp500", "msci_canada", "msci_japan"}
+VALID_INDEX_IDS = {"sp500", "msci_canada", "msci_japan", "stoxx_europe_600"}
 INDEX_COMPANY_FILES = {
     "sp500": INDEX_CONSTITUENTS_DIR / "cleaned" / "sp500_companies.csv",
     "msci_canada": INDEX_CONSTITUENTS_DIR / "cleaned" / "msci_canada_companies.csv",
     "msci_japan": INDEX_CONSTITUENTS_DIR / "cleaned" / "msci_japan_companies.csv",
+    "stoxx_europe_600": INDEX_CONSTITUENTS_DIR / "cleaned" / "stoxx_europe_600_companies.csv",
 }
 INDEX_COUNTRY_COUNT_FILES = {
     "sp500": INDEX_CONSTITUENTS_DIR / "aggregated" / "sp500_country_counts.csv",
     "msci_canada": INDEX_CONSTITUENTS_DIR / "aggregated" / "msci_canada_country_counts.csv",
     "msci_japan": INDEX_CONSTITUENTS_DIR / "aggregated" / "msci_japan_country_counts.csv",
+    "stoxx_europe_600": INDEX_CONSTITUENTS_DIR / "aggregated" / "stoxx_europe_600_country_counts.csv",
 }
 ALL_INDEX_COUNTRY_COUNTS_FILE = INDEX_CONSTITUENTS_DIR / "aggregated" / "all_indices_country_counts.csv"
 
