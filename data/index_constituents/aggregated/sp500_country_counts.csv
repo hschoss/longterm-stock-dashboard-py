@@ -1,0 +1,8 @@
+index_id,index_name,country,iso_alpha3,tax_residence_country,tax_residence_iso_alpha3,company_count,security_count,total_weight_pct,tax_country_basis,tax_country_confidence
+sp500,S&P 500,Bermuda,BMU,Bermuda,BMU,2,2,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Canada,CAN,Canada,CAN,1,1,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Ireland,IRL,Ireland,IRL,11,11,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Netherlands,NLD,Netherlands,NLD,2,2,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Switzerland,CHE,Switzerland,CHE,3,3,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,United Kingdom,GBR,United Kingdom,GBR,5,5,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,United States,USA,United States,USA,478,478,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only

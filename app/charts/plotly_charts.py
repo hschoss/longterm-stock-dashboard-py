@@ -3,9 +3,11 @@ from html import escape
 import pandas as pd
 
 try:
+    import plotly.express as px
     import plotly.graph_objects as go
     import plotly.io as pio
 except ModuleNotFoundError:  # pragma: no cover - optional in bare test environments
+    px = None
     go = None
     pio = None
 
@@ -118,3 +120,52 @@ def create_price_chart_with_log2_regression(
         yaxis_title="Preis",
     )
     return pio.to_html(figure, full_html=False, include_plotlyjs=False)
+
+def build_index_country_choropleth(country_counts_df: pd.DataFrame, color_column: str = "company_count"):
+    required_columns = {
+        "country",
+        "iso_alpha3",
+        "index_name",
+        "company_count",
+        "security_count",
+        "total_weight_pct",
+    }
+    missing_columns = sorted(required_columns.difference(country_counts_df.columns))
+    if missing_columns:
+        raise ValueError(f"country_counts_df is missing required columns: {', '.join(missing_columns)}")
+    if color_column not in country_counts_df.columns:
+        raise ValueError(f"color column '{color_column}' is not present in country_counts_df")
+    if px is None or go is None:
+        raise RuntimeError("Plotly is not installed in the current environment.")
+
+    if country_counts_df.empty:
+        figure = go.Figure()
+        figure.update_layout(
+            title="Index Country Composition",
+            template="plotly_white",
+            margin={"l": 20, "r": 20, "t": 60, "b": 20},
+        )
+        return figure
+
+    figure = px.choropleth(
+        country_counts_df,
+        locations="iso_alpha3",
+        color=color_column,
+        hover_name="country",
+        hover_data={
+            "index_name": True,
+            "company_count": True,
+            "security_count": True,
+            "total_weight_pct": ":.2f",
+            "iso_alpha3": False,
+        },
+        projection="natural earth",
+    )
+    figure.update_geos(showcoastlines=True, showframe=False)
+    figure.update_layout(
+        template="plotly_white",
+        margin={"l": 20, "r": 20, "t": 60, "b": 20},
+        coloraxis_colorbar_title=color_column.replace("_", " ").title(),
+    )
+    return figure
+

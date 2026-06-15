@@ -70,6 +70,48 @@ def get_price_frame(session: Session, stock: Stock, start_date: date | None = No
 
 PRICE_COLUMNS = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
 REQUIRED_PRICE_COLUMNS = ["Date", "Open", "High", "Low", "Close", "Volume"]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INDEX_CONSTITUENTS_DIR = PROJECT_ROOT / "data" / "index_constituents"
+VALID_INDEX_IDS = {"sp500", "msci_canada", "msci_japan"}
+INDEX_COMPANY_FILES = {
+    "sp500": INDEX_CONSTITUENTS_DIR / "cleaned" / "sp500_companies.csv",
+    "msci_canada": INDEX_CONSTITUENTS_DIR / "cleaned" / "msci_canada_companies.csv",
+    "msci_japan": INDEX_CONSTITUENTS_DIR / "cleaned" / "msci_japan_companies.csv",
+}
+INDEX_COUNTRY_COUNT_FILES = {
+    "sp500": INDEX_CONSTITUENTS_DIR / "aggregated" / "sp500_country_counts.csv",
+    "msci_canada": INDEX_CONSTITUENTS_DIR / "aggregated" / "msci_canada_country_counts.csv",
+    "msci_japan": INDEX_CONSTITUENTS_DIR / "aggregated" / "msci_japan_country_counts.csv",
+}
+ALL_INDEX_COUNTRY_COUNTS_FILE = INDEX_CONSTITUENTS_DIR / "aggregated" / "all_indices_country_counts.csv"
+
+
+def _validate_index_id(index_id: str) -> str:
+    normalized = index_id.strip().lower()
+    if normalized not in VALID_INDEX_IDS:
+        valid_values = ", ".join(sorted(VALID_INDEX_IDS))
+        raise ValueError(f"Unsupported index_id '{index_id}'. Expected one of: {valid_values}.")
+    return normalized
+
+
+def _load_required_csv(path: Path, description: str) -> pd.DataFrame:
+    if not path.exists():
+        raise FileNotFoundError(f"{description} file is missing: {path}")
+    return pd.read_csv(path)
+
+
+def load_index_companies(index_id: str) -> pd.DataFrame:
+    normalized = _validate_index_id(index_id)
+    return _load_required_csv(INDEX_COMPANY_FILES[normalized], f"Index companies for {normalized}")
+
+
+def load_index_country_counts(index_id: str) -> pd.DataFrame:
+    normalized = _validate_index_id(index_id)
+    return _load_required_csv(INDEX_COUNTRY_COUNT_FILES[normalized], f"Index country counts for {normalized}")
+
+
+def load_all_index_country_counts() -> pd.DataFrame:
+    return _load_required_csv(ALL_INDEX_COUNTRY_COUNTS_FILE, "All index country counts")
 
 
 def get_asset_by_symbol(symbol: str) -> dict | None:

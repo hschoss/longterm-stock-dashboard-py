@@ -101,3 +101,12 @@ def test_dash_asset_route_smoke():
 
     assert response.status_code == 200
     assert b"Longterm Stock Dashboard" in response.data
+
+
+def test_dash_compare_route_smoke():
+    client = build_test_app().test_client()
+
+    response = client.get("/dash/compare")
+
+    assert response.status_code == 200
+    assert b"Longterm Stock Dashboard" in response.data

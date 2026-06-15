@@ -240,6 +240,37 @@ article {
   margin-bottom: 1rem;
 }
 
+.asset-chart-with-y-slider {
+  align-items: stretch;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 104px;
+}
+
+.asset-price-graph {
+  min-width: 0;
+}
+
+.asset-y-slider-card {
+  background: #f6f8fb;
+  border: 1px solid #dce3ef;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 460px;
+  padding: 0.85rem 0.65rem 1rem;
+}
+
+.asset-y-slider-card label {
+  display: block;
+  font-weight: 600;
+}
+
+.asset-y-range-slider {
+  flex: 1;
+}
+
 .control-card {
   background: #f6f8fb;
   border: 1px solid #dce3ef;
@@ -264,6 +295,62 @@ article {
   display: inline-block;
   font-weight: 600;
   margin-top: 0.5rem;
+}
+
+.compare-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.compare-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.compare-control label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.compare-summary {
+  margin-top: 1rem;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.metric-card {
+  border: 1px solid #ddd;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: #fff;
+}
+
+.metric-card h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.metric-card p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 900px) {
+  .asset-chart-with-y-slider {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-y-slider-card {
+    min-height: 180px;
+  }
 }
 
 @media (max-width: 760px) {

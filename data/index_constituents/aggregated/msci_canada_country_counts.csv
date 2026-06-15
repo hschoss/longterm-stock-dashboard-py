@@ -1,0 +1,2 @@
+index_id,index_name,country,iso_alpha3,tax_residence_country,tax_residence_iso_alpha3,company_count,security_count,total_weight_pct,tax_country_basis,tax_country_confidence
+msci_canada,MSCI Canada,Canada,CAN,Canada,CAN,84,85,99.81,isin_country_proxy_from_user_supplied_msci_canada_holdings_not_tax_verified,proxy_only

@@ -31,6 +31,15 @@ def dash_asset_entry(symbol: str):
     return dash_app.index()
 
 
+@bp.get("/dash/compare")
+@bp.get("/dash/compare/")
+def dash_compare_entry():
+    dash_app = current_app.extensions.get("main_dash_app")
+    if dash_app is None:
+        abort(404)
+    return dash_app.index()
+
+
 @bp.get("/stocks/<symbol>/refresh")
 def refresh_stock(symbol: str):
     asset = get_asset_by_symbol(symbol)

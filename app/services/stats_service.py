@@ -232,3 +232,180 @@ def calculate_exponential_regression(
         "b": float(b),
         "row_count": int(len(working)),
     }
+
+
+def _resolve_price_column(df: pd.DataFrame, price_column: str) -> str:
+    if price_column in df.columns:
+        return price_column
+    if price_column == "Adj Close" and "Close" in df.columns:
+        return "Close"
+    raise ValueError(f"Price column '{price_column}' is not available.")
+
+
+def normalize_price_series_to_100(
+    df: pd.DataFrame,
+    price_column: str,
+) -> pd.DataFrame:
+    if df.empty:
+        raise ValueError("Price data is empty.")
+    if "Date" not in df.columns:
+        raise ValueError("Price data must contain a Date column.")
+
+    actual_price_column = _resolve_price_column(df, price_column)
+    working = df.copy()
+    working["Date"] = pd.to_datetime(working["Date"], errors="coerce")
+    working = working.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+    working[actual_price_column] = pd.to_numeric(working[actual_price_column], errors="coerce")
+    finite_mask = np.isfinite(working[actual_price_column].to_numpy(dtype=float))
+    working = working.loc[finite_mask].copy()
+    working = working[working[actual_price_column] > 0].copy()
+
+    if len(working) < 2:
+        raise ValueError("At least two valid positive price rows are required for normalization.")
+
+    first_valid_price = float(working[actual_price_column].iloc[0])
+    if first_valid_price <= 0 or not np.isfinite(first_valid_price):
+        raise ValueError("The first valid price must be positive and finite.")
+
+    working["Relative Value"] = working[actual_price_column] / first_valid_price * 100.0
+    working.attrs["price_column"] = actual_price_column
+    return working
+
+
+def align_two_normalized_series(
+    left_df: pd.DataFrame,
+    right_df: pd.DataFrame,
+    price_column: str,
+) -> tuple[pd.DataFrame, str]:
+    if "Date" not in left_df.columns or "Date" not in right_df.columns:
+        raise ValueError("Both price series must contain a Date column.")
+
+    left_column = _resolve_price_column(left_df, price_column)
+    right_column = _resolve_price_column(right_df, price_column)
+    if left_column != right_column:
+        if {left_column, right_column} == {"Adj Close", "Close"}:
+            actual_price_column = "Close"
+        else:
+            raise ValueError("Both assets must support the same comparable price column.")
+    else:
+        actual_price_column = left_column
+
+    left_working = left_df.copy()
+    right_working = right_df.copy()
+    left_working["Date"] = pd.to_datetime(left_working["Date"], errors="coerce")
+    right_working["Date"] = pd.to_datetime(right_working["Date"], errors="coerce")
+    left_working = left_working.dropna(subset=["Date"]).sort_values("Date")
+    right_working = right_working.dropna(subset=["Date"]).sort_values("Date")
+
+    for frame in (left_working, right_working):
+        frame[actual_price_column] = pd.to_numeric(frame[actual_price_column], errors="coerce")
+
+    left_working = left_working[np.isfinite(left_working[actual_price_column].to_numpy(dtype=float))]
+    right_working = right_working[np.isfinite(right_working[actual_price_column].to_numpy(dtype=float))]
+    left_working = left_working[left_working[actual_price_column] > 0]
+    right_working = right_working[right_working[actual_price_column] > 0]
+
+    aligned = left_working[["Date", actual_price_column]].merge(
+        right_working[["Date", actual_price_column]],
+        on="Date",
+        how="inner",
+        suffixes=("_left", "_right"),
+    )
+    aligned = aligned.sort_values("Date").reset_index(drop=True)
+    if len(aligned) < 2:
+        raise ValueError("At least two common valid price points are required for comparison.")
+
+    left_base = float(aligned[f"{actual_price_column}_left"].iloc[0])
+    right_base = float(aligned[f"{actual_price_column}_right"].iloc[0])
+    aligned["Left Relative Value"] = aligned[f"{actual_price_column}_left"] / left_base * 100.0
+    aligned["Right Relative Value"] = aligned[f"{actual_price_column}_right"] / right_base * 100.0
+    return aligned[["Date", "Left Relative Value", "Right Relative Value"]], actual_price_column
+
+
+def _resolve_price_column(df: pd.DataFrame, price_column: str) -> str:
+    if price_column in df.columns:
+        return price_column
+    if price_column == "Adj Close" and "Close" in df.columns:
+        return "Close"
+    raise ValueError(f"Price column '{price_column}' is not available.")
+
+
+def normalize_price_series_to_100(
+    df: pd.DataFrame,
+    price_column: str,
+) -> pd.DataFrame:
+    if df.empty:
+        raise ValueError("Price data is empty.")
+    if "Date" not in df.columns:
+        raise ValueError("Price data must contain a Date column.")
+
+    actual_price_column = _resolve_price_column(df, price_column)
+    working = df.copy()
+    working["Date"] = pd.to_datetime(working["Date"], errors="coerce")
+    working = working.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+    working[actual_price_column] = pd.to_numeric(working[actual_price_column], errors="coerce")
+    finite_mask = np.isfinite(working[actual_price_column].to_numpy(dtype=float))
+    working = working.loc[finite_mask].copy()
+    working = working[working[actual_price_column] > 0].copy()
+
+    if len(working) < 2:
+        raise ValueError("At least two valid positive price rows are required for normalization.")
+
+    first_valid_price = float(working[actual_price_column].iloc[0])
+    if first_valid_price <= 0 or not np.isfinite(first_valid_price):
+        raise ValueError("The first valid price must be positive and finite.")
+
+    working["Relative Value"] = working[actual_price_column] / first_valid_price * 100.0
+    working.attrs["price_column"] = actual_price_column
+    return working
+
+
+def align_two_normalized_series(
+    left_df: pd.DataFrame,
+    right_df: pd.DataFrame,
+    price_column: str,
+) -> tuple[pd.DataFrame, str]:
+    if "Date" not in left_df.columns or "Date" not in right_df.columns:
+        raise ValueError("Both price series must contain a Date column.")
+
+    requested_column = price_column
+    left_column = _resolve_price_column(left_df, requested_column)
+    right_column = _resolve_price_column(right_df, requested_column)
+    if left_column != right_column:
+        if {left_column, right_column} == {"Adj Close", "Close"}:
+            actual_price_column = "Close"
+        else:
+            raise ValueError("Both assets must support the same comparable price column.")
+    else:
+        actual_price_column = left_column
+
+    left_working = left_df.copy()
+    right_working = right_df.copy()
+    left_working["Date"] = pd.to_datetime(left_working["Date"], errors="coerce")
+    right_working["Date"] = pd.to_datetime(right_working["Date"], errors="coerce")
+    left_working = left_working.dropna(subset=["Date"]).sort_values("Date")
+    right_working = right_working.dropna(subset=["Date"]).sort_values("Date")
+
+    for frame in (left_working, right_working):
+        frame[actual_price_column] = pd.to_numeric(frame[actual_price_column], errors="coerce")
+
+    left_working = left_working[np.isfinite(left_working[actual_price_column].to_numpy(dtype=float))]
+    right_working = right_working[np.isfinite(right_working[actual_price_column].to_numpy(dtype=float))]
+    left_working = left_working[left_working[actual_price_column] > 0]
+    right_working = right_working[right_working[actual_price_column] > 0]
+
+    aligned = left_working[["Date", actual_price_column]].merge(
+        right_working[["Date", actual_price_column]],
+        on="Date",
+        how="inner",
+        suffixes=("_left", "_right"),
+    )
+    aligned = aligned.sort_values("Date").reset_index(drop=True)
+    if len(aligned) < 2:
+        raise ValueError("At least two common valid price points are required for comparison.")
+
+    left_base = float(aligned[f"{actual_price_column}_left"].iloc[0])
+    right_base = float(aligned[f"{actual_price_column}_right"].iloc[0])
+    aligned["Left Relative Value"] = aligned[f"{actual_price_column}_left"] / left_base * 100.0
+    aligned["Right Relative Value"] = aligned[f"{actual_price_column}_right"] / right_base * 100.0
+    return aligned[["Date", "Left Relative Value", "Right Relative Value"]], actual_price_column

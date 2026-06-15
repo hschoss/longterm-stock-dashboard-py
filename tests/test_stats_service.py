@@ -3,10 +3,12 @@ import pytest
 
 from app.services.stats_service import (
     add_log2_regression,
+    align_two_normalized_series,
     analyze_prices,
     calculate_exponential_regression,
     calculate_linear_regression,
     calculate_log2_regression,
+    normalize_price_series_to_100,
     resample_prices,
 )
 
@@ -251,3 +253,82 @@ def test_regressions_ignore_nan_and_inf():
     assert len(exponential_predictions) == 3
     assert linear_params["row_count"] == 3
     assert exponential_params["row_count"] == 3
+
+
+def test_normalize_price_series_to_100():
+    frame = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+            "Close": [10.0, 15.0, 20.0],
+        }
+    )
+
+    result = normalize_price_series_to_100(frame, "Close")
+
+    assert list(result["Relative Value"]) == [100.0, 150.0, 200.0]
+
+
+def test_align_two_normalized_series_uses_common_dates():
+    left = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+            "Close": [10.0, 20.0, 30.0],
+        }
+    )
+    right = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"]),
+            "Close": [5.0, 10.0, 15.0],
+        }
+    )
+
+    aligned, actual_price_column = align_two_normalized_series(left, right, "Close")
+
+    assert actual_price_column == "Close"
+    assert list(aligned["Date"]) == list(pd.to_datetime(["2024-01-02", "2024-01-03"]))
+    assert aligned["Left Relative Value"].iloc[0] == pytest.approx(100.0)
+    assert aligned["Right Relative Value"].iloc[0] == pytest.approx(100.0)
+
+
+def test_align_two_normalized_series_requires_two_common_points():
+    left = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+            "Close": [10.0, 12.0],
+        }
+    )
+    right = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+            "Close": [8.0, 9.0],
+        }
+    )
+
+    with pytest.raises(ValueError):
+        align_two_normalized_series(left, right, "Close")
+
+
+def test_normalize_price_series_falls_back_to_close():
+    frame = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+            "Close": [20.0, 25.0, 30.0],
+        }
+    )
+
+    result = normalize_price_series_to_100(frame, "Adj Close")
+
+    assert result.attrs["price_column"] == "Close"
+    assert list(result["Relative Value"]) == [100.0, 125.0, 150.0]
+
+
+def test_normalize_price_series_rejects_non_positive_start():
+    frame = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+            "Close": [0.0, -3.0, 5.0],
+        }
+    )
+
+    with pytest.raises(ValueError):
+        normalize_price_series_to_100(frame, "Close")
