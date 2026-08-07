@@ -8,11 +8,12 @@ from flask import current_app
 
 from app.charts.plotly_charts import DEFAULT_MAP_METRIC, VALID_MAP_METRICS, build_etf_country_exposure_map
 from app.index_config import INDEX_COLOR_CONFIG, MAP_ENABLED_INDEX_IDS, get_asset_map_color_style, get_index_color_config
-from app.services.data_service import ensure_price_data, get_asset_by_symbol, load_all_index_country_counts
-from app.services.stats_service import (
-    align_two_normalized_series,
-    calculate_exponential_regression,
-    calculate_linear_regression,
+from app.extensions import session_scope
+from app.services.data_service import (
+    get_asset_by_symbol,
+    get_price_frame,
+    get_stock,
+    load_all_index_country_counts,
 )
 
 try:
@@ -33,6 +34,38 @@ except ModuleNotFoundError:  # pragma: no cover - optional in bare test environm
 
 PRICE_COLUMNS = ["Open", "High", "Low", "Close", "Adj Close"]
 DASH_URL_BASE = "/dash/"
+
+
+def get_refresh_status(search: str | None):
+    if not search:
+        return None
+
+    query = parse_qs(search.lstrip("?"))
+    status = query.get("refresh", [None])[0]
+
+    if status == "success":
+        inserted = query.get("inserted", ["0"])[0]
+        updated = query.get("updated", ["0"])[0]
+
+        return html.Div(
+            (
+                f"Kursdaten erfolgreich aktualisiert. "
+                f"Neu eingefügt: {inserted}; aktualisiert: {updated}."
+            ),
+            className="summary-card refresh-success",
+        )
+
+    if status == "error":
+        message = query.get("message", ["Unbekannter Fehler"])[0]
+
+        return html.Div(
+            f"Kursdaten konnten nicht aktualisiert werden: {message}",
+            className="summary-card refresh-error",
+        )
+
+    return None
+
+
 
 
 def parse_symbol_from_pathname(pathname: str | None) -> str | None:
@@ -63,24 +96,49 @@ def get_available_price_columns(df: pd.DataFrame) -> list[str]:
             available.append(column)
     return available
 
-
 def prepare_asset_dataframe(symbol: str) -> pd.DataFrame:
     asset = get_asset_by_symbol(symbol)
+
     if asset is None:
         raise ValueError(f"Unknown asset symbol '{symbol}'.")
 
-    frame = ensure_price_data(asset["symbol"]).copy()
-    if "Date" not in frame.columns:
-        raise ValueError(f"Price data for '{symbol}' does not contain a Date column.")
+    with session_scope() as session:
+        stock = get_stock(session, asset["symbol"])
+
+        if stock is None:
+            raise ValueError(
+                f"Für '{asset['symbol']}' sind noch keine Kursdaten in der "
+                "Datenbank vorhanden. Bitte zuerst Kursdaten aktualisieren."
+            )
+
+        frame = get_price_frame(session, stock)
+
+    if frame.empty:
+        raise ValueError(
+            f"Für '{asset['symbol']}' sind keine Kursdaten in der Datenbank vorhanden."
+        )
+
+    frame = frame.rename(
+        columns={
+            "date": "Date",
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "adjusted_close": "Adj Close",
+            "volume": "Volume",
+        }
+    )
 
     frame["Date"] = pd.to_datetime(frame["Date"], errors="coerce")
     frame = frame.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
-    if frame.empty:
-        raise ValueError(f"Price data for '{symbol}' does not contain valid dates.")
 
     for column in PRICE_COLUMNS:
         if column in frame.columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
+
+    if frame.empty:
+        raise ValueError(f"No valid database rows available for '{asset['symbol']}'.")
 
     return frame
 
@@ -519,10 +577,16 @@ def build_not_found_layout(symbol: str | None = None) -> html.Div:
     )
 
 
-def build_asset_detail_layout(symbol: str) -> html.Div:
+
+def build_asset_detail_layout(
+    symbol: str,
+    search: str | None = None,
+) -> html.Div:
     asset = get_asset_by_symbol(symbol)
     if asset is None:
         return build_not_found_layout(symbol)
+
+    refresh_status = get_refresh_status(search)
 
     return html.Div(
         [
@@ -532,7 +596,10 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                         [
                             html.H1(asset["name"]),
                             html.P(f"Symbol: {asset['symbol']}"),
-                            html.P(f"Index: {asset.get('index', 'n/a')} | Region: {asset.get('region', 'n/a')}"),
+                            html.P(
+                                f"Index: {asset.get('index', 'n/a')} | "
+                                f"Region: {asset.get('region', 'n/a')}"
+                            ),
                         ],
                         className="detail-header-copy",
                     ),
@@ -541,17 +608,37 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                             html.Span(f"WKN: {asset.get('wkn') or '—'}"),
                             html.Span(f"ISIN: {asset.get('isin') or '—'}"),
                             html.Span(f"Provider: {asset.get('provider') or '—'}"),
-                            html.Span(f"Ausschuettung: {asset.get('distribution') or '—'}"),
+                            html.Span(
+                                f"Ausschuettung: {asset.get('distribution') or '—'}"
+                            ),
                         ],
                         className="summary-card detail-meta",
                     ),
-                    html.P(
+                    html.Div(
                         [
                             dcc.Link("Zur Weltkarte", href="/dash/"),
                             html.Span(" | "),
-                            html.A("Kursdaten aktualisieren", href=f"/stocks/{asset['symbol']}/refresh"),
-                        ]
+                            html.Form(
+                                [
+                                    html.Button(
+                                        "Kursdaten aktualisieren",
+                                        type="submit",
+                                        className="button-link",
+                                    )
+                                ],
+                                action=f"/stocks/{asset['symbol']}/refresh",
+                                method="post",
+                                style={"display": "inline"},
+                            ),
+                        ],
+                        className="detail-actions",
                     ),
+                    html.Div(
+                        refresh_status,
+                        className="summary-card refresh-status",
+                    )
+                    if refresh_status
+                    else None,
                 ],
                 className="detail-header",
             ),
@@ -562,7 +649,12 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                             html.Div(
                                 [
                                     html.Label("Kurswert"),
-                                    dcc.Dropdown(id="price-column-dropdown", options=[], value=None, clearable=False),
+                                    dcc.Dropdown(
+                                        id="price-column-dropdown",
+                                        options=[],
+                                        value=None,
+                                        clearable=False,
+                                    ),
                                 ],
                                 className="control-card",
                             ),
@@ -573,7 +665,10 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                                         id="y-scale-radio",
                                         options=[
                                             {"label": "Linear", "value": "linear"},
-                                            {"label": "Log2-transformiert", "value": "log2"},
+                                            {
+                                                "label": "Log2-transformiert",
+                                                "value": "log2",
+                                            },
                                         ],
                                         value="linear",
                                         inline=True,
@@ -587,9 +682,18 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                                     dcc.RadioItems(
                                         id="regression-radio",
                                         options=[
-                                            {"label": "Keine Regression", "value": "none"},
-                                            {"label": "Lineare Regression", "value": "linear"},
-                                            {"label": "Exponentielle Regression", "value": "exponential"},
+                                            {
+                                                "label": "Keine Regression",
+                                                "value": "none",
+                                            },
+                                            {
+                                                "label": "Lineare Regression",
+                                                "value": "linear",
+                                            },
+                                            {
+                                                "label": "Exponentielle Regression",
+                                                "value": "exponential",
+                                            },
                                         ],
                                         value="none",
                                         inline=True,
@@ -603,7 +707,11 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                     html.Div(id="asset-status", className="summary-card"),
                     html.Div(
                         [
-                            dcc.Graph(id="asset-price-graph", config={"scrollZoom": True}, className="asset-price-graph"),
+                            dcc.Graph(
+                                id="asset-price-graph",
+                                config={"scrollZoom": True},
+                                className="asset-price-graph",
+                            ),
                             html.Div(
                                 [
                                     html.Label("Y-Bereich"),
@@ -617,7 +725,10 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                                         allowCross=False,
                                         vertical=True,
                                         verticalHeight=420,
-                                        tooltip={"placement": "left", "always_visible": False},
+                                        tooltip={
+                                            "placement": "left",
+                                            "always_visible": False,
+                                        },
                                         className="asset-y-range-slider",
                                         updatemode="drag",
                                     ),
@@ -634,15 +745,23 @@ def build_asset_detail_layout(symbol: str) -> html.Div:
                         step=1,
                         value=[0, 1],
                         marks=None,
-                        tooltip={"placement": "bottom", "always_visible": False},
+                        tooltip={
+                            "placement": "bottom",
+                            "always_visible": False,
+                        },
                     ),
-                    html.Div(id="regression-summary", className="summary-card"),
+                    html.Div(
+                        id="regression-summary",
+                        className="summary-card",
+                    ),
                 ],
                 className="detail-chart-section",
             ),
         ],
         className="dash-page detail-page",
     )
+
+
 
 
 def build_asset_figure(
@@ -963,18 +1082,25 @@ def register_main_dash_app(server) -> None:
 
     dash_app.layout = build_shell
 
-    @dash_app.callback(Output("page-content", "children"), Input("url", "pathname"))
-    def display_page(pathname: str | None):
+    @dash_app.callback(
+        Output("page-content", "children"),
+        Input("url", "pathname"),
+        Input("url", "search"),
+    )
+    def display_page(pathname: str | None, search: str | None):
         if pathname in ("/dash/", "/dash", None):
             return build_overview_layout()
+    
         if pathname in ("/dash/compare", "/dash/compare/"):
             return build_compare_layout()
-
+    
         symbol = parse_symbol_from_pathname(pathname)
         if symbol is not None:
-            return build_asset_detail_layout(symbol)
-
+            return build_asset_detail_layout(symbol, search)
+    
         return build_not_found_layout()
+
+
 
     @dash_app.callback(Output("asset-switcher", "value"), Input("url", "pathname"))
     def sync_asset_switcher(pathname: str | None):

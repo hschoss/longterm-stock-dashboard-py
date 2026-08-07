@@ -238,9 +238,114 @@ def download_price_data(
         progress=False,
         threads=False,
     )
-    normalized = _normalize_price_frame(frame, symbol)
-    normalized.to_csv(csv_path, index=False)
-    return normalized
+    
+    return _normalize_price_frame(frame, symbol)
+
+def _optional_float(value) -> float | None:
+    """Wandelt einen Tabellenwert in float oder None um."""
+    if pd.isna(value):
+        return None
+    return float(value)
+
+
+def _optional_int(value) -> int | None:
+    """Wandelt einen Tabellenwert in int oder None um."""
+    if pd.isna(value):
+        return None
+    return int(value)
+
+
+def upsert_price_frame(
+    session: Session,
+    symbol: str,
+    frame: pd.DataFrame,
+    name: str | None = None,
+) -> dict[str, int]:
+    """
+    Legt ein Asset bei Bedarf an und importiert Kurszeilen.
+
+    Existierende Zeilen mit derselben Kombination aus stock_id und
+    price_date werden aktualisiert statt doppelt eingefügt.
+    """
+
+    if select is None:
+        raise RuntimeError("SQLAlchemy is not installed in the current environment.")
+
+    normalized_symbol = symbol.strip().upper()
+
+    working = frame.copy()
+    working["Date"] = pd.to_datetime(working["Date"], errors="coerce")
+    working = working.dropna(subset=["Date", "Close"])
+    working = working.drop_duplicates(subset=["Date"], keep="last")
+    working = working.sort_values("Date")
+
+    if working.empty:
+        raise ValueError(f"No valid price rows available for '{normalized_symbol}'.")
+
+    stock = session.scalar(
+        select(Stock).where(Stock.symbol == normalized_symbol)
+    )
+
+    if stock is None:
+        stock = Stock(
+            symbol=normalized_symbol,
+            name=name or normalized_symbol,
+        )
+        session.add(stock)
+        session.flush()
+    elif name and not stock.name:
+        stock.name = name
+
+    existing_prices = {
+        price.price_date: price
+        for price in session.scalars(
+            select(StockPrice).where(StockPrice.stock_id == stock.id)
+        )
+    }
+
+    inserted = 0
+    updated = 0
+
+    for _, row in working.iterrows():
+        price_date = row["Date"].date()
+
+        values = {
+            "open": _optional_float(row.get("Open")),
+            "high": _optional_float(row.get("High")),
+            "low": _optional_float(row.get("Low")),
+            "close": _optional_float(row.get("Close")),
+            "adjusted_close": _optional_float(row.get("Adj Close")),
+            "volume": _optional_int(row.get("Volume")),
+        }
+
+        # close ist im SQLAlchemy-Model Pflicht.
+        if values["close"] is None:
+            continue
+
+        existing = existing_prices.get(price_date)
+
+        if existing is None:
+            session.add(
+                StockPrice(
+                    stock_id=stock.id,
+                    price_date=price_date,
+                    **values,
+                )
+            )
+            inserted += 1
+        else:
+            for field, value in values.items():
+                setattr(existing, field, value)
+            updated += 1
+
+    return {
+        "inserted": inserted,
+        "updated": updated,
+        "total": inserted + updated,
+    }
+
+
+
 
 def store_price_data_in_database(symbol: str, frame: pd.DataFrame) -> int:
     """Speichert Kursdaten als Upsert-artigen Import in PostgreSQL."""

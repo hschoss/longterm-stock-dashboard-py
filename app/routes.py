@@ -1,10 +1,14 @@
 from flask import Blueprint, abort, current_app, flash, redirect, render_template
 
+from urllib.parse import urlencode
 
+from flask import Blueprint, abort, current_app, redirect, render_template
+
+from app.extensions import session_scope
 from app.services.data_service import (
     download_price_data,
     get_asset_by_symbol,
-    store_price_data_in_database,
+    upsert_price_frame,
 )
 
 
@@ -46,26 +50,43 @@ def dash_compare_entry():
     return dash_app.index()
 
 
-@bp.get("/stocks/<symbol>/refresh")
+@bp.post("/stocks/<symbol>/refresh")
 def refresh_stock(symbol: str):
     asset = get_asset_by_symbol(symbol)
+
     if asset is None:
         abort(404)
 
-    
     try:
-        frame = download_price_data(asset["symbol"], overwrite=True)
-        imported_count = store_price_data_in_database(asset["symbol"], frame)
-    
-        flash(
-            f"{imported_count} Kurszeilen für {asset['name']} wurden aktualisiert "
-            "und in PostgreSQL gespeichert.",
-            "success",
-        )
-    except Exception as exc:
-        flash(
-            f"Kursdaten für {asset['name']} konnten nicht aktualisiert werden: {exc}",
-            "error",
+        frame = download_price_data(
+            asset["symbol"],
+            overwrite=True,
         )
 
-    return redirect(f"/dash/assets/{asset['symbol']}")
+        with session_scope() as session:
+            result = upsert_price_frame(
+                session=session,
+                symbol=asset["symbol"],
+                name=asset["name"],
+                frame=frame,
+            )
+
+        query = urlencode(
+            {
+                "refresh": "success",
+                "inserted": result["inserted"],
+                "updated": result["updated"],
+            }
+        )
+
+    except Exception as exc:
+        query = urlencode(
+            {
+                "refresh": "error",
+                "message": str(exc),
+            }
+        )
+
+    return redirect(f"/dash/assets/{asset['symbol']}?{query}")
+
+
