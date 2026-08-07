@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from flask import current_app
 
-from app.charts.plotly_charts import DEFAULT_MAP_METRIC, INDEX_COLOR_CONFIG, VALID_MAP_METRICS, build_etf_country_exposure_map
+from app.charts.plotly_charts import DEFAULT_MAP_METRIC, VALID_MAP_METRICS, build_etf_country_exposure_map
+from app.index_config import INDEX_COLOR_CONFIG, MAP_ENABLED_INDEX_IDS, get_asset_map_color_style, get_index_color_config
 from app.services.data_service import ensure_price_data, get_asset_by_symbol, load_all_index_country_counts
 from app.services.stats_service import (
     align_two_normalized_series,
@@ -175,7 +176,7 @@ MAP_METRIC_OPTIONS = [
     {"label": "Total weight %", "value": "total_weight_pct"},
 ]
 MAP_METRIC_LABELS = {option["value"]: option["label"] for option in MAP_METRIC_OPTIONS}
-PREFERRED_MAP_INDEX_ORDER = ["sp500", "msci_canada", "msci_japan", "stoxx_europe_600"]
+PREFERRED_MAP_INDEX_ORDER = ["sp500", "msci_canada", "msci_japan", "stoxx_europe_600", "emerging_markets"]
 
 
 def _build_empty_map_figure(message: str):
@@ -366,13 +367,24 @@ def build_overview_layout() -> html.Div:
                             dcc.Link(
                                 html.Div(
                                     [
+                                        html.Div(
+                                            [
+                                                html.Span(
+                                                    get_index_color_config(asset["index_id"])['label'],
+                                                    className="etf-index-badge",
+                                                ),
+                                            ],
+                                            className="asset-card-header",
+                                        ),
                                         html.H3(asset["name"]),
                                         html.P(f"Symbol: {asset['symbol']}"),
                                         html.P(f"Index: {asset.get('index', 'n/a')}"),
                                         html.P(f"Region: {asset.get('region', 'n/a')}"),
                                         html.P(f"ISIN: {asset.get('isin', 'n/a')}"),
+                                        html.P(asset.get("card_note", ""), className="asset-card-note"),
                                     ],
                                     className="asset-card",
+                                    style=get_asset_map_color_style(asset["index_id"]),
                                 ),
                                 href=f"/dash/assets/{asset['symbol']}",
                                 className="asset-card-link",

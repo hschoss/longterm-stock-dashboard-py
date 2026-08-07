@@ -11,30 +11,8 @@ except ModuleNotFoundError:  # pragma: no cover - optional in bare test environm
     go = None
     pio = None
 
+from app.index_config import INDEX_COLOR_CONFIG, get_index_color_config
 from app.services.stats_service import calculate_log2_regression
-
-INDEX_COLOR_CONFIG = {
-    "sp500": {
-        "label": "S&P 500",
-        "base_color": "#2563eb",
-        "colorscale": [[0.0, "#dbeafe"], [1.0, "#1d4ed8"]],
-    },
-    "msci_canada": {
-        "label": "MSCI Canada",
-        "base_color": "#dc2626",
-        "colorscale": [[0.0, "#fee2e2"], [1.0, "#b91c1c"]],
-    },
-    "msci_japan": {
-        "label": "MSCI Japan",
-        "base_color": "#7c3aed",
-        "colorscale": [[0.0, "#ede9fe"], [1.0, "#5b21b6"]],
-    },
-    "stoxx_europe_600": {
-        "label": "STOXX Europe 600",
-        "base_color": "#16a34a",
-        "colorscale": [[0.0, "#dcfce7"], [1.0, "#15803d"]],
-    },
-}
 DEFAULT_MAP_METRIC = "company_count"
 VALID_MAP_METRICS = {"company_count", "security_count", "total_weight_pct"}
 
@@ -138,11 +116,14 @@ def _hover_template() -> str:
 
 
 def _build_single_index_trace(index_df: pd.DataFrame, index_id: str, color_metric: str, showscale: bool = True):
-    color_config = INDEX_COLOR_CONFIG.get(index_id, {
-        "label": index_df["index_name"].iloc[0] if not index_df.empty else index_id,
-        "base_color": "#475569",
-        "colorscale": [[0.0, "#e2e8f0"], [1.0, "#475569"]],
-    })
+    if index_id in INDEX_COLOR_CONFIG:
+        color_config = get_index_color_config(index_id)
+    else:
+        color_config = {
+            "label": index_df["index_name"].iloc[0] if not index_df.empty else index_id,
+            "base_color": "#475569",
+            "colorscale": [[0.0, "#e2e8f0"], [1.0, "#475569"]],
+        }
     z_values = pd.to_numeric(index_df[color_metric], errors="coerce").fillna(0)
     colorbar_title = {
         "company_count": "Company count",

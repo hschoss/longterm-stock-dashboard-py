@@ -1,5 +1,7 @@
 import os
 
+from app.index_config import get_tracked_assets
+
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:  # pragma: no cover - optional in bare test environments
@@ -34,73 +36,6 @@ class Config:
     DEFAULT_START_DATE = "2010-01-01"
     DEFAULT_INTERVAL = "1d"
     PREFERRED_PRICE_COLUMN = "Adj Close"
-    # The map markers below are representative anchor points for ETF/index regions,
-    # not precise headquarters or constituent-company locations.
-    TRACKED_ASSETS = [
-        {
-            "name": "iShares STOXX Europe 600 UCITS ETF (DE)",
-            "symbol": "EXSA.DE",
-            "wkn": "263530",
-            "isin": "DE0002635307",
-            "index": "STOXX Europe 600",
-            "provider": "iShares",
-            "distribution": "dist",
-            "map_label": "Europe",
-            "lat": 50.1109,
-            "lon": 8.6821,
-            "region": "Europe",
-        },
-        {
-            "name": "iShares Core S&P 500 UCITS ETF USD (Acc)",
-            "symbol": "SXR8.DE",
-            "wkn": "A0YEDG",
-            "isin": "IE00B5BMR087",
-            "index": "S&P 500",
-            "provider": "iShares",
-            "distribution": "acc",
-            "map_label": "USA",
-            "lat": 39.8283,
-            "lon": -98.5795,
-            "region": "North America",
-        },
-        {
-            "name": "iShares MSCI Canada UCITS ETF USD (Acc)",
-            "symbol": "CCAU.L",
-            "wkn": "A0YEDS",
-            "isin": "IE00B52SF786",
-            "index": "MSCI Canada",
-            "provider": "iShares",
-            "distribution": "acc",
-            "map_label": "Canada",
-            "lat": 56.1304,
-            "lon": -106.3468,
-            "region": "North America",
-        },
-        {
-            "name": "iShares MSCI Japan UCITS ETF USD (Dist)",
-            "symbol": "IQQJ.DE",
-            "alternative_symbol": "IJPN.L",
-            "wkn": "A0DK60",
-            "isin": "IE00B02KXH56",
-            "index": "MSCI Japan",
-            "provider": "iShares",
-            "distribution": "dist",
-            "map_label": "Japan",
-            "lat": 36.2048,
-            "lon": 138.2529,
-            "region": "Asia",
-        },
-        {
-            "name": "Xtrackers MSCI Emerging Markets UCITS ETF 1C",
-            "symbol": "XMME.DE",
-            "wkn": "A12GVR",
-            "isin": "IE00BTJRMP35",
-            "index": "MSCI Emerging Markets",
-            "provider": "Xtrackers",
-            "distribution": "acc",
-            "map_label": "Emerging Markets",
-            "lat": 20.0,
-            "lon": 80.0,
-            "region": "Global Emerging Markets",
-        },
-    ]
+    # The assets below are shared with the ETF overview cards and Dash controls.
+    TRACKED_ASSETS = get_tracked_assets()
+
