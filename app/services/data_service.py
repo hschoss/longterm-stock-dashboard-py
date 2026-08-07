@@ -2,6 +2,12 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from datetime import date
+from app.extensions import session_scope
+from app.models import Stock, StockPrice
+from sqlalchemy import select
+
+
 import pandas as pd
 from flask import current_app
 
@@ -235,6 +241,80 @@ def download_price_data(
     normalized = _normalize_price_frame(frame, symbol)
     normalized.to_csv(csv_path, index=False)
     return normalized
+
+def store_price_data_in_database(symbol: str, frame: pd.DataFrame) -> int:
+    """Speichert Kursdaten als Upsert-artigen Import in PostgreSQL."""
+
+    normalized_symbol = symbol.strip().upper()
+
+    with session_scope() as session:
+        stock = session.scalar(
+            select(Stock).where(Stock.symbol == normalized_symbol)
+        )
+
+        if stock is None:
+            stock = Stock(symbol=normalized_symbol, name=normalized_symbol)
+            session.add(stock)
+            session.flush()  # erzeugt stock.id
+
+        existing_prices = {
+            row.price_date: row
+            for row in session.scalars(
+                select(StockPrice).where(StockPrice.stock_id == stock.id)
+            )
+        }
+
+        imported_count = 0
+
+        for _, row in frame.iterrows():
+            price_date = pd.Timestamp(row["Date"]).date()
+
+            values = {
+                "open": _to_optional_float(row.get("Open")),
+                "high": _to_optional_float(row.get("High")),
+                "low": _to_optional_float(row.get("Low")),
+                "close": _to_required_float(row.get("Close")),
+                "adjusted_close": _to_optional_float(row.get("Adj Close")),
+                "volume": _to_optional_int(row.get("Volume")),
+            }
+
+            existing = existing_prices.get(price_date)
+
+            if existing is None:
+                session.add(
+                    StockPrice(
+                        stock_id=stock.id,
+                        price_date=price_date,
+                        **values,
+                    )
+                )
+            else:
+                for field, value in values.items():
+                    setattr(existing, field, value)
+
+            imported_count += 1
+
+    return imported_count
+
+
+def _to_optional_float(value):
+    if pd.isna(value):
+        return None
+    return float(value)
+
+
+def _to_required_float(value):
+    if pd.isna(value):
+        raise ValueError("Close darf nicht leer sein.")
+    return float(value)
+
+
+def _to_optional_int(value):
+    if pd.isna(value):
+        return None
+    return int(value)
+
+
 
 
 def load_price_data(symbol: str) -> pd.DataFrame:

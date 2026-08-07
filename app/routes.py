@@ -1,6 +1,12 @@
 from flask import Blueprint, abort, current_app, flash, redirect, render_template
 
-from app.services.data_service import download_price_data, get_asset_by_symbol
+
+from app.services.data_service import (
+    download_price_data,
+    get_asset_by_symbol,
+    store_price_data_in_database,
+)
+
 
 bp = Blueprint("main", __name__)
 
@@ -46,10 +52,20 @@ def refresh_stock(symbol: str):
     if asset is None:
         abort(404)
 
+    
     try:
-        download_price_data(asset["symbol"], overwrite=True)
-        flash(f"Kursdaten fuer {asset['name']} wurden aktualisiert.", "success")
+        frame = download_price_data(asset["symbol"], overwrite=True)
+        imported_count = store_price_data_in_database(asset["symbol"], frame)
+    
+        flash(
+            f"{imported_count} Kurszeilen für {asset['name']} wurden aktualisiert "
+            "und in PostgreSQL gespeichert.",
+            "success",
+        )
     except Exception as exc:
-        flash(f"Kursdaten fuer {asset['name']} konnten nicht aktualisiert werden: {exc}", "error")
+        flash(
+            f"Kursdaten für {asset['name']} konnten nicht aktualisiert werden: {exc}",
+            "error",
+        )
 
     return redirect(f"/dash/assets/{asset['symbol']}")
