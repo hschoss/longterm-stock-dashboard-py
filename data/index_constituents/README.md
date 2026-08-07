@@ -13,10 +13,12 @@ The current raw files are:
 - `raw/sp500_dash_plotly_company_map.csv`
 - `raw/msci_canada_dash_plotly_company_map.csv`
 - `raw/msci_japan_dash_plotly_company_map.csv`
+- `raw/stoxx-600.csv`
+- `raw/msci-emering-markets.csv`
 - `raw/Constituent_IE00BTJRMP35_recreated_index_holdings.csv`
 
-The first three raw files are normalized by `scripts/clean_index_constituents.py`.
-The `Constituent_IE00BTJRMP35_recreated_index_holdings.csv` file is preserved in `raw/` as additional source data, but it is not yet part of the current cleaned and aggregated outputs.
+The first five raw files are normalized by `scripts/clean_index_constituents.py`.
+The `Constituent_IE00BTJRMP35_recreated_index_holdings.csv` file is preserved in `raw/` as additional source data, but it is not part of the current cleaned and aggregated outputs.
 
 ## Cleaned Company-Level Schema
 
@@ -25,6 +27,8 @@ The cleaned company files are:
 - `cleaned/sp500_companies.csv`
 - `cleaned/msci_canada_companies.csv`
 - `cleaned/msci_japan_companies.csv`
+- `cleaned/stoxx_europe_600_companies.csv`
+- `cleaned/emerging_markets_companies.csv`
 - `cleaned/excluded_non_company_rows.csv`
 
 Each company-level CSV uses this standard schema and column order:
@@ -62,6 +66,7 @@ Notes:
 - `tax_residence_country` is currently a proxy field and is not verified legal tax-residence data.
 - `tax_residence_iso_alpha3` is the ISO-3166 alpha-3 code for the current proxy country.
 - `is_duplicate_security` is `True` where the same normalized company appears more than once as separate security rows.
+- Gold is tracked as a price asset elsewhere in the app, but it has no country constituent map and is excluded from these files.
 - Non-company rows such as cash, FX, futures, collateral, derivatives, and margin lines are excluded from the cleaned company files and written to `cleaned/excluded_non_company_rows.csv` when present.
 
 ## Aggregated Country-Count Schema
@@ -71,6 +76,8 @@ The aggregated files are:
 - `aggregated/sp500_country_counts.csv`
 - `aggregated/msci_canada_country_counts.csv`
 - `aggregated/msci_japan_country_counts.csv`
+- `aggregated/stoxx_europe_600_country_counts.csv`
+- `aggregated/emerging_markets_country_counts.csv`
 - `aggregated/all_indices_country_counts.csv`
 
 Each aggregated CSV uses this schema:

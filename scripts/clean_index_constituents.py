@@ -65,14 +65,14 @@ EXCLUDED_COLUMNS = [
 ]
 
 NON_COMPANY_KEYWORDS = {
-    "cash": "cash",
     "cash collateral": "cash collateral",
     "currency cash": "currency cash",
-    "fx": "FX",
-    "futures": "futures",
     "index futures": "index futures",
     "derivatives": "derivatives",
+    "futures": "futures",
     "margin": "margin",
+    "fx": "FX",
+    "cash": "cash",
 }
 
 PRESERVED_RAW_ONLY_FILES = [
@@ -86,27 +86,15 @@ class SourceSpec:
     index_name: str
     raw_filename: str
     cleaned_filename: str
+    parser: str
 
 
 SOURCE_SPECS = (
-    SourceSpec(
-        index_id="sp500",
-        index_name="S&P 500",
-        raw_filename="sp500_dash_plotly_company_map.csv",
-        cleaned_filename="sp500_companies.csv",
-    ),
-    SourceSpec(
-        index_id="msci_canada",
-        index_name="MSCI Canada",
-        raw_filename="msci_canada_dash_plotly_company_map.csv",
-        cleaned_filename="msci_canada_companies.csv",
-    ),
-    SourceSpec(
-        index_id="msci_japan",
-        index_name="MSCI Japan",
-        raw_filename="msci_japan_dash_plotly_company_map.csv",
-        cleaned_filename="msci_japan_companies.csv",
-    ),
+    SourceSpec("sp500", "S&P 500", "sp500_dash_plotly_company_map.csv", "sp500_companies.csv", "company_map"),
+    SourceSpec("msci_canada", "MSCI Canada", "msci_canada_dash_plotly_company_map.csv", "msci_canada_companies.csv", "msci_holdings"),
+    SourceSpec("msci_japan", "MSCI Japan", "msci_japan_dash_plotly_company_map.csv", "msci_japan_companies.csv", "msci_holdings"),
+    SourceSpec("stoxx_europe_600", "STOXX Europe 600", "stoxx-600.csv", "stoxx_europe_600_companies.csv", "company_map"),
+    SourceSpec("emerging_markets", "MSCI Emerging Markets", "msci-emering-markets.csv", "emerging_markets_companies.csv", "company_map"),
 )
 
 
@@ -139,7 +127,7 @@ def _security_id(index_id: str, source_row_number: int, isin: str, ticker: str) 
     return f"{index_id}-{source_row_number}"
 
 
-def _detect_non_company_reason(asset_class: str, security_name: str, company_name: str, ticker: str, notes: str) -> str | None:
+def _detect_non_company_reason(asset_class: str, security_name: str, company_name: str, ticker: str) -> str | None:
     haystack = " ".join([asset_class, security_name, company_name, ticker]).lower()
     for keyword, reason in NON_COMPANY_KEYWORDS.items():
         if keyword in haystack:
@@ -154,7 +142,7 @@ def _required_raw_path(filename: str) -> Path:
     return path
 
 
-def _base_company_row(spec: SourceSpec, source_file: str, source_row_number: int) -> dict[str, object]:
+def _base_company_row(spec: SourceSpec, source_row_number: int) -> dict[str, object]:
     return {
         "index_id": spec.index_id,
         "index_name": spec.index_name,
@@ -164,7 +152,7 @@ def _base_company_row(spec: SourceSpec, source_file: str, source_row_number: int
         "security_name": "",
         "sector": "",
         "industry": "",
-        "asset_class": "",
+        "asset_class": "Equity",
         "currency": "",
         "isin": "",
         "weight_pct": None,
@@ -178,37 +166,51 @@ def _base_company_row(spec: SourceSpec, source_file: str, source_row_number: int
         "tax_country_confidence": "proxy_only",
         "is_company": True,
         "is_duplicate_security": False,
-        "source_file": source_file,
+        "source_file": spec.raw_filename,
         "source_row_number": source_row_number,
         "notes": "",
     }
 
 
-def _normalize_sp500(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _append_excluded_row(spec: SourceSpec, excluded_rows: list[dict[str, object]], source_row_number: int, ticker: str, security_name: str, asset_class: str, reason: str) -> None:
+    excluded_rows.append(
+        {
+            "index_id": spec.index_id,
+            "source_file": spec.raw_filename,
+            "source_row_number": source_row_number,
+            "ticker": ticker,
+            "security_name": security_name,
+            "asset_class": asset_class,
+            "reason_excluded": reason,
+        }
+    )
+
+
+def _normalize_company_map_source(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
     included_rows: list[dict[str, object]] = []
     excluded_rows: list[dict[str, object]] = []
+
     for source_row_number, row in enumerate(df.to_dict(orient="records"), start=1):
         company_name = _clean_text(row.get("company_name"))
         ticker = _clean_text(row.get("ticker"))
         security_name = company_name
         asset_class = "Equity"
-        notes = ""
-        exclusion_reason = _detect_non_company_reason(asset_class, security_name, company_name, ticker, notes)
-        if exclusion_reason is not None:
-            excluded_rows.append(
-                {
-                    "index_id": spec.index_id,
-                    "source_file": spec.raw_filename,
-                    "source_row_number": source_row_number,
-                    "ticker": ticker,
-                    "security_name": security_name,
-                    "asset_class": asset_class,
-                    "reason_excluded": exclusion_reason,
-                }
-            )
+        reason = _detect_non_company_reason(asset_class, security_name, company_name, ticker)
+        if reason is not None:
+            _append_excluded_row(spec, excluded_rows, source_row_number, ticker, security_name, asset_class, reason)
             continue
 
-        item = _base_company_row(spec, spec.raw_filename, source_row_number)
+        item = _base_company_row(spec, source_row_number)
+        country = _clean_text(row.get("map_country") or row.get("headquarters_country"))
+        iso_alpha3 = _clean_text(row.get("map_iso_alpha3") or row.get("iso_alpha3"))
+        tax_residence_country = _clean_text(row.get("tax_residence_country") or country)
+        tax_residence_iso_alpha3 = _clean_text(row.get("tax_residence_iso_alpha3") or iso_alpha3)
+        tax_country_basis = _clean_text(row.get("tax_country_basis"))
+        if spec.index_id == "stoxx_europe_600" and country and not tax_country_basis:
+            tax_country_basis = "holding_country_from_source_not_tax_verified"
+        if spec.index_id == "emerging_markets" and not tax_country_basis:
+            tax_country_basis = "holding_country_from_source_not_tax_verified"
+
         item.update(
             {
                 "ticker": ticker,
@@ -217,18 +219,18 @@ def _normalize_sp500(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, 
                 "sector": _clean_text(row.get("gics_sector")),
                 "industry": _clean_text(row.get("gics_sub_industry")),
                 "asset_class": asset_class,
-                "currency": "",
-                "isin": "",
-                "weight_pct": None,
-                "market_value_usd": None,
-                "shares": None,
-                "country": _clean_text(row.get("map_country") or row.get("headquarters_country")),
-                "iso_alpha3": _clean_text(row.get("map_iso_alpha3") or row.get("iso_alpha3")),
-                "tax_residence_country": _clean_text(row.get("tax_residence_country") or row.get("map_country")),
-                "tax_residence_iso_alpha3": _clean_text(row.get("tax_residence_iso_alpha3") or row.get("map_iso_alpha3") or row.get("iso_alpha3")),
-                "tax_country_basis": _clean_text(row.get("tax_country_basis")),
+                "currency": _clean_text(row.get("trading_currency")),
+                "isin": _clean_text(row.get("isin")),
+                "weight_pct": _to_float(row.get("index_weight_pct")),
+                "market_value_usd": _to_float(row.get("market_value_usd")),
+                "shares": _to_float(row.get("quantity")),
+                "country": country,
+                "iso_alpha3": iso_alpha3,
+                "tax_residence_country": tax_residence_country,
+                "tax_residence_iso_alpha3": tax_residence_iso_alpha3,
+                "tax_country_basis": tax_country_basis,
                 "tax_country_confidence": _clean_text(row.get("tax_country_confidence")) or "proxy_only",
-                "notes": notes,
+                "notes": _clean_text(row.get("notes")),
             }
         )
         item["security_id"] = _security_id(spec.index_id, source_row_number, item["isin"], ticker)
@@ -237,31 +239,21 @@ def _normalize_sp500(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, 
     return pd.DataFrame(included_rows), pd.DataFrame(excluded_rows, columns=EXCLUDED_COLUMNS)
 
 
-def _normalize_msci(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _normalize_msci_holdings_source(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
     included_rows: list[dict[str, object]] = []
     excluded_rows: list[dict[str, object]] = []
+
     for source_row_number, row in enumerate(df.to_dict(orient="records"), start=1):
         company_name = _clean_text(row.get("company_name"))
         security_name = _clean_text(row.get("company_name_raw")) or company_name
         ticker = _clean_text(row.get("ticker"))
         asset_class = _clean_text(row.get("security_type")) or "Equity"
-        notes = _clean_text(row.get("notes"))
-        exclusion_reason = _detect_non_company_reason(asset_class, security_name, company_name, ticker, notes)
-        if exclusion_reason is not None:
-            excluded_rows.append(
-                {
-                    "index_id": spec.index_id,
-                    "source_file": spec.raw_filename,
-                    "source_row_number": source_row_number,
-                    "ticker": ticker,
-                    "security_name": security_name,
-                    "asset_class": asset_class,
-                    "reason_excluded": exclusion_reason,
-                }
-            )
+        reason = _detect_non_company_reason(asset_class, security_name, company_name, ticker)
+        if reason is not None:
+            _append_excluded_row(spec, excluded_rows, source_row_number, ticker, security_name, asset_class, reason)
             continue
 
-        item = _base_company_row(spec, spec.raw_filename, source_row_number)
+        item = _base_company_row(spec, source_row_number)
         item.update(
             {
                 "ticker": ticker,
@@ -281,7 +273,7 @@ def _normalize_msci(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, p
                 "tax_residence_iso_alpha3": _clean_text(row.get("tax_residence_iso_alpha3") or row.get("map_iso_alpha3")),
                 "tax_country_basis": _clean_text(row.get("tax_country_basis")),
                 "tax_country_confidence": _clean_text(row.get("tax_country_confidence")) or "proxy_only",
-                "notes": notes,
+                "notes": _clean_text(row.get("notes")),
             }
         )
         item["security_id"] = _security_id(spec.index_id, source_row_number, item["isin"], ticker)
@@ -292,20 +284,25 @@ def _normalize_msci(df: pd.DataFrame, spec: SourceSpec) -> tuple[pd.DataFrame, p
 
 def _normalize_source(spec: SourceSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
     raw_df = pd.read_csv(_required_raw_path(spec.raw_filename))
-    if spec.index_id == "sp500":
-        normalized_df, excluded_df = _normalize_sp500(raw_df, spec)
+    if spec.parser == "company_map":
+        normalized_df, excluded_df = _normalize_company_map_source(raw_df, spec)
+    elif spec.parser == "msci_holdings":
+        normalized_df, excluded_df = _normalize_msci_holdings_source(raw_df, spec)
     else:
-        normalized_df, excluded_df = _normalize_msci(raw_df, spec)
+        raise ValueError(f"Unsupported parser '{spec.parser}' for {spec.index_id}.")
 
     normalized_df = normalized_df.reindex(columns=COMPANY_COLUMNS)
     company_keys = normalized_df["company_name"].map(_normalized_company_key)
     normalized_df["is_duplicate_security"] = company_keys.duplicated(keep=False)
 
-    if normalized_df["iso_alpha3"].eq("").any():
-        missing_rows = normalized_df.loc[normalized_df["iso_alpha3"].eq(""), ["source_file", "source_row_number"]]
+    if normalized_df["iso_alpha3"].fillna("").astype(str).str.strip().eq("").any():
+        missing_rows = normalized_df.loc[normalized_df["iso_alpha3"].fillna("").astype(str).str.strip().eq(""), ["source_file", "source_row_number"]]
         raise ValueError(f"Missing iso_alpha3 in normalized rows for {spec.index_id}: {missing_rows.to_dict(orient='records')}")
-    if normalized_df["tax_residence_iso_alpha3"].eq("").any():
-        missing_rows = normalized_df.loc[normalized_df["tax_residence_iso_alpha3"].eq(""), ["source_file", "source_row_number"]]
+    if normalized_df["tax_residence_iso_alpha3"].fillna("").astype(str).str.strip().eq("").any():
+        missing_rows = normalized_df.loc[
+            normalized_df["tax_residence_iso_alpha3"].fillna("").astype(str).str.strip().eq(""),
+            ["source_file", "source_row_number"],
+        ]
         raise ValueError(
             f"Missing tax_residence_iso_alpha3 in normalized rows for {spec.index_id}: {missing_rows.to_dict(orient='records')}"
         )
@@ -340,6 +337,7 @@ def _aggregate_country_counts(company_df: pd.DataFrame) -> pd.DataFrame:
     aggregated = aggregated.reindex(columns=AGGREGATED_COLUMNS)
     aggregated["company_count"] = aggregated["company_count"].astype(int)
     aggregated["security_count"] = aggregated["security_count"].astype(int)
+    aggregated["total_weight_pct"] = pd.to_numeric(aggregated["total_weight_pct"], errors="coerce").fillna(0.0)
     return aggregated.sort_values(["index_id", "country", "tax_residence_country"]).reset_index(drop=True)
 
 
@@ -385,7 +383,7 @@ def run_cleaning() -> dict[str, list[Path]]:
     return {
         "cleaned": cleaned_paths,
         "aggregated": aggregated_paths,
-        "preserved_raw_only": [RAW_DIR / filename for filename in PRESERVED_RAW_ONLY_FILES],
+        "preserved_raw_only": [RAW_DIR / filename for filename in PRESERVED_RAW_ONLY_FILES if (RAW_DIR / filename).exists()],
     }
 
 

@@ -1,0 +1,36 @@
+index_id,index_name,country,iso_alpha3,tax_residence_country,tax_residence_iso_alpha3,company_count,security_count,total_weight_pct,tax_country_basis,tax_country_confidence
+emerging_markets,MSCI Emerging Markets,Australia,AUS,Australia,AUS,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Brazil,BRA,Brazil,BRA,46,46,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Canada,CAN,Canada,CAN,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Chile,CHL,Chile,CHL,10,10,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,China,CHN,China,CHN,542,542,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Colombia,COL,Colombia,COL,3,3,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Czech Republic,CZE,Czech Republic,CZE,3,3,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Egypt,EGY,Egypt,EGY,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Greece,GRC,Greece,GRC,10,10,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Hong Kong,HKG,Hong Kong,HKG,27,27,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Hungary,HUN,Hungary,HUN,3,3,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,India,IND,India,IND,168,168,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Indonesia,IDN,Indonesia,IDN,11,11,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Ireland,IRL,Ireland,IRL,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Kazakhstan,KAZ,Kazakhstan,KAZ,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Kuwait,KWT,Kuwait,KWT,7,7,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Luxembourg,LUX,Luxembourg,LUX,2,2,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Malaysia,MYS,Malaysia,MYS,21,21,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Mexico,MEX,Mexico,MEX,22,22,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Netherlands,NLD,Netherlands,NLD,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Peru,PER,Peru,PER,2,2,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Philippines,PHL,Philippines,PHL,10,10,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Poland,POL,Poland,POL,15,15,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Qatar,QAT,Qatar,QAT,12,12,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Romania,ROU,Romania,ROU,1,1,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Russia,RUS,Russian Federation,RUS,22,23,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Saudi Arabia,SAU,Saudi Arabia,SAU,31,31,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Singapore,SGP,Singapore,SGP,2,2,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,South Africa,ZAF,South Africa,ZAF,25,25,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,South Korea,KOR,"Korea, Republic of",KOR,76,76,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Taiwan,TWN,Taiwan,TWN,77,77,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Thailand,THA,Thailand,THA,18,18,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Turkey,TUR,Turkey,TUR,11,11,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,United Arab Emirates,ARE,United Arab Emirates,ARE,16,16,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,United States,USA,United States,USA,3,3,0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only

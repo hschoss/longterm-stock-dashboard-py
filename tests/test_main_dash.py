@@ -9,6 +9,7 @@ from app.dash_apps.main_dash import (
     parse_compare_symbols_from_search,
     parse_symbol_from_pathname,
 )
+from app.index_config import INDEX_COLOR_CONFIG, get_tracked_assets
 
 
 def _collect_component_ids(component) -> set[str]:
@@ -27,6 +28,22 @@ def _collect_component_ids(component) -> set[str]:
     elif children is not None:
         component_ids.update(_collect_component_ids(children))
     return component_ids
+
+
+def _find_component_by_id(component, target_id):
+    if component is None:
+        return None
+    if getattr(component, "id", None) == target_id:
+        return component
+    children = getattr(component, "children", None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            found = _find_component_by_id(child, target_id)
+            if found is not None:
+                return found
+    elif children is not None:
+        return _find_component_by_id(children, target_id)
+    return None
 
 
 def test_parse_symbol_from_pathname_returns_symbol_for_detail_route():
@@ -54,6 +71,27 @@ def test_build_overview_layout_includes_choropleth_controls():
 
     component_ids = _collect_component_ids(layout)
     assert {"world-map", "overview-index-dropdown", "overview-metric-dropdown", "world-map-status"}.issubset(component_ids)
+
+
+def test_build_overview_layout_color_cards_use_shared_config():
+    app = Flask(__name__)
+    app.config["TRACKED_ASSETS"] = get_tracked_assets()
+
+    with app.app_context():
+        layout = build_overview_layout()
+
+    asset_grid = None
+    for child in getattr(layout.children[1], "children", []):
+        if getattr(child, "className", None) == "asset-grid":
+            asset_grid = child
+            break
+    assert asset_grid is not None
+    first_link = asset_grid.children[0]
+    first_card = first_link.children
+    style = first_card.style
+    assert style["--etf-color-base"] == INDEX_COLOR_CONFIG["gold"]["base_color"]
+    assert style["--etf-color-light"] == INDEX_COLOR_CONFIG["gold"]["light_color"]
+    assert style["--etf-color-dark"] == INDEX_COLOR_CONFIG["gold"]["dark_color"]
 
 
 def test_build_asset_figure_applies_requested_y_axis_range():

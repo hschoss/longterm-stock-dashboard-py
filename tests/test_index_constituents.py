@@ -59,7 +59,7 @@ EXPECTED_AGGREGATED_COLUMNS = [
     "tax_country_confidence",
 ]
 NON_COMPANY_PATTERN = re.compile(r"\bcash collateral\b|\bcurrency cash\b|\bindex futures\b|\bderivatives\b|\bfutures\b|\bmargin\b|\bfx\b|\bcash\b")
-TARGET_INDEX_IDS = ("sp500", "msci_canada", "msci_japan")
+TARGET_INDEX_IDS = ("sp500", "msci_canada", "msci_japan", "stoxx_europe_600", "emerging_markets")
 
 
 def _load_cleaning_module():
@@ -159,6 +159,8 @@ def test_aggregated_country_count_files_have_expected_schema(cleaning_result):
 
     combined = load_all_index_country_counts()
     assert list(combined.columns) == EXPECTED_AGGREGATED_COLUMNS
+    assert set(combined["index_id"].unique()) == set(TARGET_INDEX_IDS)
+    assert "gold" not in set(combined["index_id"].unique())
     assert len(combined) == sum(len(frame) for frame in per_index_frames)
 
 
@@ -216,3 +218,9 @@ def test_build_index_country_choropleth_returns_plotly_figure(cleaning_result):
     assert len(figure.data) == 1
     assert figure.data[0].type == "choropleth"
     assert figure.data[0].colorbar.title.text == "Company count"
+
+
+def test_all_indices_country_counts_excludes_gold():
+    combined = load_all_index_country_counts()
+    assert "gold" not in set(combined["index_id"].unique())
+    assert {"sp500", "msci_canada", "msci_japan", "stoxx_europe_600", "emerging_markets"}.issubset(set(combined["index_id"].unique()))

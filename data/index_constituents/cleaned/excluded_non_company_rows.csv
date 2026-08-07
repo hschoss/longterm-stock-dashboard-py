@@ -1,2 +1,4 @@
 index_id,source_file,source_row_number,ticker,security_name,asset_class,reason_excluded
 sp500,sp500_dash_plotly_company_map.csv,295,EFX,Equifax,Equity,FX
+stoxx_europe_600,stoxx-600.csv,28,IFX,INFINEON TECHNOLOGIES AG,Equity,FX
+emerging_markets,msci-emering-markets.csv,1086,CNE100000FX6,METALLURGICAL CORP OF CHIN A,Equity,FX

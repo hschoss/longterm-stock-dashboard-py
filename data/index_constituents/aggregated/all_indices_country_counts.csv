@@ -1,10 +1,61 @@
 index_id,index_name,country,iso_alpha3,tax_residence_country,tax_residence_iso_alpha3,company_count,security_count,total_weight_pct,tax_country_basis,tax_country_confidence
+emerging_markets,MSCI Emerging Markets,Australia,AUS,Australia,AUS,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Brazil,BRA,Brazil,BRA,46,46,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Canada,CAN,Canada,CAN,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Chile,CHL,Chile,CHL,10,10,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,China,CHN,China,CHN,542,542,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Colombia,COL,Colombia,COL,3,3,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Czech Republic,CZE,Czech Republic,CZE,3,3,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Egypt,EGY,Egypt,EGY,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Greece,GRC,Greece,GRC,10,10,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Hong Kong,HKG,Hong Kong,HKG,27,27,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Hungary,HUN,Hungary,HUN,3,3,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,India,IND,India,IND,168,168,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Indonesia,IDN,Indonesia,IDN,11,11,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Ireland,IRL,Ireland,IRL,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Kazakhstan,KAZ,Kazakhstan,KAZ,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Kuwait,KWT,Kuwait,KWT,7,7,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Luxembourg,LUX,Luxembourg,LUX,2,2,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Malaysia,MYS,Malaysia,MYS,21,21,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Mexico,MEX,Mexico,MEX,22,22,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Netherlands,NLD,Netherlands,NLD,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Peru,PER,Peru,PER,2,2,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Philippines,PHL,Philippines,PHL,10,10,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Poland,POL,Poland,POL,15,15,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Qatar,QAT,Qatar,QAT,12,12,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Romania,ROU,Romania,ROU,1,1,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Russia,RUS,Russian Federation,RUS,22,23,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Saudi Arabia,SAU,Saudi Arabia,SAU,31,31,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Singapore,SGP,Singapore,SGP,2,2,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,South Africa,ZAF,South Africa,ZAF,25,25,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,South Korea,KOR,"Korea, Republic of",KOR,76,76,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Taiwan,TWN,Taiwan,TWN,77,77,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Thailand,THA,Thailand,THA,18,18,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,Turkey,TUR,Turkey,TUR,11,11,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,United Arab Emirates,ARE,United Arab Emirates,ARE,16,16,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
+emerging_markets,MSCI Emerging Markets,United States,USA,United States,USA,3,3,0.0,country_field_from_uploaded_xlsx_not_tax_verified,proxy_only
 msci_canada,MSCI Canada,Canada,CAN,Canada,CAN,84,85,99.81,isin_country_proxy_from_user_supplied_msci_canada_holdings_not_tax_verified,proxy_only
 msci_japan,MSCI Japan,Japan,JPN,Japan,JPN,168,168,99.24,market_location_proxy_from_user_supplied_msci_japan_holdings_not_tax_verified,proxy_only
-sp500,S&P 500,Bermuda,BMU,Bermuda,BMU,2,2,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
-sp500,S&P 500,Canada,CAN,Canada,CAN,1,1,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
-sp500,S&P 500,Ireland,IRL,Ireland,IRL,11,11,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
-sp500,S&P 500,Netherlands,NLD,Netherlands,NLD,2,2,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
-sp500,S&P 500,Switzerland,CHE,Switzerland,CHE,3,3,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
-sp500,S&P 500,United Kingdom,GBR,United Kingdom,GBR,5,5,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
-sp500,S&P 500,United States,USA,United States,USA,478,478,0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Bermuda,BMU,Bermuda,BMU,2,2,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Canada,CAN,Canada,CAN,1,1,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Ireland,IRL,Ireland,IRL,11,11,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Netherlands,NLD,Netherlands,NLD,2,2,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,Switzerland,CHE,Switzerland,CHE,3,3,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,United Kingdom,GBR,United Kingdom,GBR,5,5,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+sp500,S&P 500,United States,USA,United States,USA,478,478,0.0,headquarters_proxy_from_wikipedia_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Austria,AUT,Austria,AUT,8,8,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Belgium,BEL,Belgium,BEL,17,17,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Denmark,DNK,Denmark,DNK,25,25,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Finland,FIN,Finland,FIN,19,19,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,France,FRA,France,FRA,71,71,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Germany,DEU,Germany,DEU,69,69,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Ireland,IRL,Ireland,IRL,6,6,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Italy,ITA,Italy,ITA,41,41,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Netherlands,NLD,Netherlands,NLD,32,32,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Norway,NOR,Norway,NOR,22,22,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Poland,POL,Poland,POL,16,16,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Portugal,PRT,Portugal,PRT,5,5,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Spain,ESP,Spain,ESP,29,29,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Sweden,SWE,Sweden,SWE,55,55,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,Switzerland,CHE,Switzerland,CHE,58,58,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
+stoxx_europe_600,STOXX Europe 600,United Kingdom,GBR,United Kingdom,GBR,128,128,0.0,holding_location_proxy_from_uploaded_exsa_holdings_not_tax_verified,proxy_only
