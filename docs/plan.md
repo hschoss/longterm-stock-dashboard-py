@@ -3,6 +3,15 @@
 > Ergebnis der Bestandsaufnahme aus `docs/auftrag.md`, Phase 0. Ändert keinen Code.
 > Bezieht sich auf den Ist-Zustand in `docs/ARCHITEKTUR.md`.
 
+> **Nachtrag:** Auf ausdrücklichen Wunsch wurde direkt im Anschluss an Phase 0 —
+> ohne die übliche Freigabe pro Phase abzuwarten — das Fundament (Phase 1) und ein
+> erstes App-Gerüst (Phase 3) umgesetzt, siehe `docs/entscheidungen.md`, Abschnitt
+> „Restrukturierung". Die Bestandsaufnahme-Tabelle in Abschnitt 6 ist damit
+> **ausgeführt** (Spalte „Entscheidung" beschreibt jetzt, was tatsächlich passiert
+> ist), Sync (Phase 2) bleibt wie hier beschrieben offen. Aktueller Code-Stand:
+> `docs/ARCHITEKTUR.md` ist noch nicht nachgezogen und beschreibt den alten
+> Flask/Dash-Stand.
+
 ## 1. Status dieses Plans
 
 Phase 0 hat zwei Teile: (a) Analyse des bestehenden Repos, (b) lesende Inspektion der
