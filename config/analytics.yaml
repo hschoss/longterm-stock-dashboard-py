@@ -1,0 +1,10 @@
+# Fenster, Konfidenzniveaus und Perioden pro Jahr fuer die Rueckschau-Analytics.
+# Siehe docs/auftrag.md Abschnitt 8.2 und src/findash/core/config_models.py.
+periods_per_year:
+  daily: 252
+risk_free_rate: 0.0
+var_confidence_levels: [0.95, 0.99]
+moving_average_windows: [20, 50, 200]
+rolling_return_windows_years: [10, 15, 20]
+holding_period_years: [1, 2, 3, 5, 7, 10, 15, 20]
+annual_return_histogram_bins: 10

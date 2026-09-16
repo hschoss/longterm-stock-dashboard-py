@@ -1,0 +1,89 @@
+# Getrackte Finanzinstrumente. Migriert aus dem alten app/index_config.py (siehe
+# docs/plan.md, Abschnitt 6). Neue Instrumente werden hier ergaenzt, nicht im Code.
+assets:
+  - symbol: GOLD
+    name: Gold price
+    asset_type: commodity
+    currency: USD
+    exchange_timezone: UTC
+    color: "#ca8a04"
+    region: Global
+    map_label: Global
+    card_note: Commodity price asset. No company-country constituent map.
+
+  - symbol: XMME.DE
+    name: Xtrackers MSCI Emerging Markets UCITS ETF 1C
+    asset_type: etf
+    currency: EUR
+    exchange_timezone: Europe/Berlin
+    color: "#0891b2"
+    region: Global Emerging Markets
+    map_label: Emerging Markets
+    lat: 20.0
+    lon: 80.0
+    card_note: Broad emerging markets equity exposure.
+    index_constituent_key: emerging_markets
+
+  - symbol: SXR8.DE
+    name: iShares Core S&P 500 UCITS ETF USD (Acc)
+    asset_type: etf
+    currency: EUR
+    exchange_timezone: Europe/Berlin
+    color: "#2563eb"
+    region: North America
+    map_label: USA
+    lat: 39.8283
+    lon: -98.5795
+    card_note: Tracks large-cap U.S. equity exposure.
+    index_constituent_key: sp500
+
+  - symbol: IQQJ.DE
+    name: iShares MSCI Japan UCITS ETF USD (Dist)
+    asset_type: etf
+    currency: EUR
+    exchange_timezone: Europe/Berlin
+    color: "#7c3aed"
+    region: Asia
+    map_label: Japan
+    lat: 36.2048
+    lon: 138.2529
+    card_note: Tracks Japanese equity exposure.
+    index_constituent_key: msci_japan
+
+  - symbol: IPXJ.L
+    name: iShares MSCI Pacific ex-Japan UCITS ETF USD
+    asset_type: etf
+    currency: USD
+    exchange_timezone: Europe/London
+    color: "#0f766e"
+    region: Asia-Pacific
+    map_label: Pacific ex-Japan
+    lat: -25.2744
+    lon: 133.7751
+    card_note: Tracks developed Pacific equity exposure excluding Japan.
+
+  - symbol: EXSA.DE
+    name: iShares STOXX Europe 600 UCITS ETF (DE)
+    asset_type: etf
+    currency: EUR
+    exchange_timezone: Europe/Berlin
+    color: "#16a34a"
+    region: Europe
+    map_label: Europe
+    lat: 50.1109
+    lon: 8.6821
+    card_note: Tracks large- and mid-cap European equities.
+    index_constituent_key: stoxx_europe_600
+
+  - symbol: CCAU.L
+    name: iShares MSCI Canada UCITS ETF USD (Acc)
+    asset_type: etf
+    currency: USD
+    exchange_timezone: Europe/London
+    color: "#dc2626"
+    region: North America
+    map_label: Canada
+    lat: 56.1304
+    lon: -106.3468
+    card_note: Tracks Canadian equity exposure.
+    index_constituent_key: msci_canada
