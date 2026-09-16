@@ -1,0 +1,27 @@
+# Lokale Python-Umgebungen
+.venv/
+venv/
+env/
+
+# Python-Artefakte
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Lokale Daten, Geheimnisse und Git-Metadaten
+.env
+.git/
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor und Betriebssystem
+.vscode/
+.idea/
+.DS_Store
+
+# Optional: lokale Kursdaten nicht ins Image kopieren
+# data/prices/

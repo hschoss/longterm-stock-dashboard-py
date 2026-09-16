@@ -4,13 +4,15 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
+RUN uv sync --frozen --no-dev
 
 EXPOSE 5000
 
-CMD ["flask", "--app", "app:create_app", "run", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["uv", "run", "gunicorn", "findash.app.main:server", "--bind", "0.0.0.0:5000", "--workers", "2"]
