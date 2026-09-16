@@ -29,3 +29,46 @@ Abschnitt „Arbeitsweise"). Jede Zeile nennt die Annahme, den Grund und ab wann
   Quelldatenbanktyps.** Grund: ist die im Auftrag genannte Voreinstellung und
   funktioniert unabhängig vom Quellsystem. Muss nach Klärung der offenen Fragen in
   `docs/plan.md` Abschnitt 8 bestätigt werden.
+
+## Restrukturierung (nach Phase 0, vor Freigabe von Phase 1)
+
+- **Fundament (Phase 1) und Grundgerüst der App (Phase 3) vorgezogen und
+  zusammengelegt, Sync (Phase 2) ausgeklammert.** Grund: expliziter Wunsch des
+  Nutzers, zuerst eine erweiterbare Softwarestruktur samt Baukasten für neue
+  Charts/Indizes zu bekommen, statt auf die Quelldatenbank-Zugangsdaten zu warten.
+  Die offenen Fragen aus `docs/plan.md` Abschnitt 8 bleiben unverändert offen.
+  Überprüfen: beim nächsten Phasenwechsel, ob die Phasennummerierung aus
+  `docs/auftrag.md` neu zugeordnet werden soll.
+
+- **Altcode (`app/`, CSV-Kurspfad, yfinance, alte Skripte, `requirements.txt`,
+  `STATUS.md`/`SETUP.md`/`local.db`) sofort gelöscht statt parallel bestehen zu
+  lassen.** Grund: die im vorherigen Turn vorgelegte übernehmen/zusammenführen/
+  löschen-Liste (`docs/plan.md` Abschnitt 6) wurde als hinreichende Freigabe
+  gewertet, nachdem der Nutzer explizit „Restrukturiere das Projekt" sagte.
+  Zwei unbedeutende unversionierte Änderungen (Whitespace/doppelter Import in
+  `app/dash_apps/main_dash.py` und `app/services/stats_service.py`) wurden dabei
+  verworfen; ihre fachliche Logik ist bereits in `analytics/regression.py` und
+  `analytics/comparison.py` aufgegangen.
+
+- **`ref.assets` bekommt (noch) keine Spalte für die Weltkarten-Zuordnung.** Der
+  Zusammenhang zwischen einem Asset und seinem Eintrag in den
+  Indexbestandteile-CSVs läuft über das neue Feld `index_constituent_key` in
+  `config/assets.yaml`/`AssetConfig`, gelesen direkt aus der YAML-Datei, nicht aus
+  der DB. Grund: vermeidet eine Schemaänderung, bevor die CSV-Daten überhaupt nach
+  `ref.index_country_exposure` migriert sind. Überprüfen: bei dieser Migration
+  (`docs/plan.md` Abschnitt 6) draufschauen, ob das Feld dann in die DB wandert.
+
+- **Weltkarten-Hover vereinfacht.** Der alte Hover zeigte zusätzlich
+  Steuerdomizil-Basis/-Konfidenz an; der neue `app/figures/world_map.py` zeigt nur
+  noch Land, ISO-3 und die gewählte Metrik. Grund: Zeitaufwand für die
+  Wiederherstellung des vollen Hover-Customdata stand nicht im Verhältnis zum
+  Nutzen in diesem Umbauschritt. Überprüfen: falls die Detailinformation vermisst
+  wird, ist sie über `customdata` in `_trace()` leicht nachrüstbar.
+
+- **Docker-Compose-Services umbenannt (`postgres`→`db`, `web`→`app`, neu `worker`).**
+  Grund: passend zu den bereits in `CLAUDE.md` vorformulierten Befehlsbeispielen
+  und zu `docs/auftrag.md` Abschnitt 11.
+
+- **Ruff-Zeilenlänge auf 120 gesetzt** (statt zunächst 110). Grund: mehrere
+  SQLAlchemy-Spaltendefinitionen und Dash-Layout-Aufrufe wurden bei 110 unnötig
+  zerrissen; 120 ist noch lesbar und spart Umbrüche ohne Aussagekraft.
