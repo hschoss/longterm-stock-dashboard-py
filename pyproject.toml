@@ -1,0 +1,112 @@
+[project]
+name = "findash"
+version = "0.1.0"
+description = "Modulares Finanz-Analyse-Dashboard (Rueckschau und Vorschau) auf Dash, Bootstrap und PostgreSQL."
+requires-python = ">=3.12"
+dependencies = [
+    "dash>=2.18,<3",
+    "dash-bootstrap-components>=1.6,<2",
+    "dash-bootstrap-templates>=2.1,<3",
+    "plotly>=5.24,<7",
+    "pandas>=2.3,<3",
+    "numpy>=2.2,<3",
+    "sqlalchemy>=2.0,<3",
+    "psycopg[binary]>=3.2,<4",
+    "alembic>=1.13,<2",
+    "pydantic>=2.8,<3",
+    "pydantic-settings>=2.5,<3",
+    "pyyaml>=6.0,<7",
+    "typer>=0.13,<1",
+    "gunicorn>=23.0,<24",
+]
+
+[project.scripts]
+findash = "findash.cli:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<10",
+    "ruff>=0.7,<1",
+    "mypy>=1.11,<2",
+    "import-linter>=2.1,<3",
+    "pre-commit>=3.8,<4",
+    "types-pyyaml",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/findash"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+explicit_package_bases = true
+packages = ["findash"]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+# Die Paketabhaengigkeiten aus docs/plan.md Abschnitt 4.1 bilden keinen linearen
+# Schichtenstapel (z. B. importieren storage und analytics beide nur core, aber nicht
+# einander), deshalb je Regel ein "forbidden"-Contract statt eines einzelnen
+# "layers"-Contracts.
+[tool.importlinter]
+root_package = "findash"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "core ist die unterste Schicht"
+type = "forbidden"
+source_modules = ["findash.core"]
+forbidden_modules = [
+    "findash.storage", "findash.sync", "findash.analytics",
+    "findash.forecasting", "findash.jobs", "findash.app",
+]
+
+[[tool.importlinter.contracts]]
+name = "storage importiert nur core, SQL bleibt hier gekapselt"
+type = "forbidden"
+source_modules = ["findash.storage"]
+forbidden_modules = [
+    "findash.analytics", "findash.forecasting", "findash.jobs", "findash.app",
+]
+
+[[tool.importlinter.contracts]]
+name = "analytics ist rein: nur core, kein Dash, keine DB"
+type = "forbidden"
+source_modules = ["findash.analytics"]
+forbidden_modules = [
+    "findash.storage", "findash.forecasting", "findash.jobs", "findash.app",
+    "dash", "sqlalchemy",
+]
+
+[[tool.importlinter.contracts]]
+name = "forecasting kennt weder storage noch Dash"
+type = "forbidden"
+source_modules = ["findash.forecasting"]
+forbidden_modules = ["findash.storage", "findash.jobs", "findash.app", "dash", "sqlalchemy"]
+
+[[tool.importlinter.contracts]]
+name = "jobs importiert nie app"
+type = "forbidden"
+source_modules = ["findash.jobs"]
+forbidden_modules = ["findash.app"]
+
+[[tool.importlinter.contracts]]
+name = "app rechnet nicht schwer: kein forecasting, kein jobs, kein sync"
+type = "forbidden"
+source_modules = ["findash.app"]
+forbidden_modules = ["findash.forecasting", "findash.jobs", "findash.sync"]
