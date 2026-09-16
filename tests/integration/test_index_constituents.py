@@ -1,23 +1,29 @@
+"""Prueft die Offline-Aufbereitung der Indexbestandteile (scripts/clean_index_constituents.py)
+und die darauf aufbauende Weltkarten-Figur (findash.app.figures.world_map). Ersetzt die
+Vorgaengerversion, die noch das entfernte app.*-Paket importierte (docs/plan.md
+Abschnitt 6: Indexbestandteile-CSVs werden einmalig migriert, dann geloescht --
+solange das nicht passiert ist, bleibt dies der Pfad, den findash.storage.repositories.
+index_constituents liest)."""
+
+from __future__ import annotations
+
 import importlib.util
+import re
 import sys
 from pathlib import Path
-import re
 
 import pandas as pd
 import pytest
 
-from app.charts.plotly_charts import build_etf_country_exposure_map, build_index_country_choropleth
-from app.services.data_service import (
-    load_all_index_country_counts,
-    load_index_companies,
-    load_index_country_counts,
-)
+from findash.app.figures.world_map import build_country_exposure_figure
+from findash.storage.repositories.index_constituents import load_all_index_country_exposure
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = PROJECT_ROOT / "scripts" / "clean_index_constituents.py"
 INDEX_DIR = PROJECT_ROOT / "data" / "index_constituents"
 CLEANED_DIR = INDEX_DIR / "cleaned"
 AGGREGATED_DIR = INDEX_DIR / "aggregated"
+
 EXPECTED_COMPANY_COLUMNS = [
     "index_id",
     "index_name",
@@ -58,7 +64,9 @@ EXPECTED_AGGREGATED_COLUMNS = [
     "tax_country_basis",
     "tax_country_confidence",
 ]
-NON_COMPANY_PATTERN = re.compile(r"\bcash collateral\b|\bcurrency cash\b|\bindex futures\b|\bderivatives\b|\bfutures\b|\bmargin\b|\bfx\b|\bcash\b")
+NON_COMPANY_PATTERN = re.compile(
+    r"\bcash collateral\b|\bcurrency cash\b|\bindex futures\b|\bderivatives\b|\bfutures\b|\bmargin\b|\bfx\b|\bcash\b"
+)
 TARGET_INDEX_IDS = ("sp500", "msci_canada", "msci_japan", "stoxx_europe_600", "emerging_markets")
 
 
@@ -75,16 +83,16 @@ def _load_cleaning_module():
 @pytest.fixture(scope="session")
 def cleaning_result():
     module = _load_cleaning_module()
-    result = module.run_cleaning()
-    return {"module": module, "result": result}
+    return {"module": module, "result": module.run_cleaning()}
 
 
 @pytest.fixture(scope="session")
 def cleaned_company_frames(cleaning_result):
-    frames = {}
-    for index_id in TARGET_INDEX_IDS:
-        frames[index_id] = load_index_companies(index_id)
-    return frames
+    return {index_id: pd.read_csv(CLEANED_DIR / f"{index_id}_companies.csv") for index_id in TARGET_INDEX_IDS}
+
+
+def _load_aggregated(index_id: str) -> pd.DataFrame:
+    return pd.read_csv(AGGREGATED_DIR / f"{index_id}_country_counts.csv")
 
 
 def test_cleaning_script_creates_all_expected_outputs(cleaning_result):
@@ -149,41 +157,33 @@ def test_duplicate_security_rows_are_flagged(cleaned_company_frames):
 
 
 def test_aggregated_country_count_files_have_expected_schema(cleaning_result):
-    per_index_frames = [load_index_country_counts(index_id) for index_id in TARGET_INDEX_IDS]
+    per_index_frames = [_load_aggregated(index_id) for index_id in TARGET_INDEX_IDS]
     for frame in per_index_frames:
         assert list(frame.columns) == EXPECTED_AGGREGATED_COLUMNS
-        assert {"company_count", "security_count", "total_weight_pct"}.issubset(frame.columns)
         assert (frame["company_count"] > 0).all()
         assert (frame["security_count"] > 0).all()
         assert (frame["company_count"] <= frame["security_count"]).all()
 
-    combined = load_all_index_country_counts()
+    combined = load_all_index_country_exposure()
     assert list(combined.columns) == EXPECTED_AGGREGATED_COLUMNS
     assert set(combined["index_id"].unique()) == set(TARGET_INDEX_IDS)
     assert "gold" not in set(combined["index_id"].unique())
     assert len(combined) == sum(len(frame) for frame in per_index_frames)
 
 
-def test_index_company_loaders_work_for_supported_indices(cleaned_company_frames):
+def test_index_company_frames_are_non_empty_and_match_index_id(cleaned_company_frames):
     for index_id, frame in cleaned_company_frames.items():
         assert not frame.empty
         assert frame["index_id"].eq(index_id).all()
 
 
-def test_invalid_index_id_raises_clear_error():
-    with pytest.raises(ValueError, match="Unsupported index_id"):
-        load_index_companies("not_an_index")
+def test_build_country_exposure_figure_for_selected_index(cleaning_result):
+    country_counts = load_all_index_country_exposure()
+    sp500_counts = _load_aggregated("sp500")
+    figure = build_country_exposure_figure(
+        country_counts, selected_index_key="sp500", color_metric="company_count", index_labels={"sp500": "S&P 500"}
+    )
 
-    with pytest.raises(ValueError, match="Unsupported index_id"):
-        load_index_country_counts("not_an_index")
-
-
-def test_build_etf_country_exposure_map_returns_choropleth_figure_for_selected_index(cleaning_result):
-    country_counts = load_all_index_country_counts()
-    sp500_counts = load_index_country_counts("sp500")
-    figure = build_etf_country_exposure_map(country_counts, selected_index_id="sp500", color_metric="company_count")
-
-    assert figure is not None
     assert len(figure.data) == 1
     trace = figure.data[0]
     assert trace.type == "choropleth"
@@ -191,36 +191,24 @@ def test_build_etf_country_exposure_map_returns_choropleth_figure_for_selected_i
     assert set(trace.locations) == set(sp500_counts["iso_alpha3"])
 
 
-def test_build_etf_country_exposure_map_overview_uses_choropleth_traces_only(cleaning_result):
-    country_counts = load_all_index_country_counts()
-    figure = build_etf_country_exposure_map(country_counts, selected_index_id=None, color_metric="company_count")
+def test_build_country_exposure_figure_overview_uses_choropleth_traces_only(cleaning_result):
+    country_counts = load_all_index_country_exposure()
+    figure = build_country_exposure_figure(country_counts, selected_index_key=None, color_metric="company_count")
 
     assert len(figure.data) >= len(TARGET_INDEX_IDS)
     assert all(trace.type == "choropleth" for trace in figure.data)
-    assert not any(trace.type == "scattergeo" for trace in figure.data)
 
 
-def test_build_etf_country_exposure_map_hover_includes_company_and_total_weight(cleaning_result):
-    country_counts = load_index_country_counts("sp500")
-    figure = build_etf_country_exposure_map(country_counts, selected_index_id="sp500", color_metric="company_count")
+def test_build_country_exposure_figure_hover_includes_metric(cleaning_result):
+    country_counts = _load_aggregated("sp500")
+    country_counts["index_id"] = "sp500"
+    figure = build_country_exposure_figure(country_counts, selected_index_key="sp500", color_metric="company_count")
 
     trace = figure.data[0]
-    assert "Company count" in trace.hovertemplate
-    assert "Total weight %" in trace.hovertemplate
-    assert "Tax-country basis" in trace.hovertemplate
-
-
-def test_build_index_country_choropleth_returns_plotly_figure(cleaning_result):
-    country_counts = load_index_country_counts("sp500")
-    figure = build_index_country_choropleth(country_counts)
-
-    assert figure is not None
-    assert len(figure.data) == 1
-    assert figure.data[0].type == "choropleth"
-    assert figure.data[0].colorbar.title.text == "Company count"
+    assert "Company Count" in trace.hovertemplate
 
 
 def test_all_indices_country_counts_excludes_gold():
-    combined = load_all_index_country_counts()
+    combined = load_all_index_country_exposure()
     assert "gold" not in set(combined["index_id"].unique())
-    assert {"sp500", "msci_canada", "msci_japan", "stoxx_europe_600", "emerging_markets"}.issubset(set(combined["index_id"].unique()))
+    assert set(TARGET_INDEX_IDS).issubset(set(combined["index_id"].unique()))

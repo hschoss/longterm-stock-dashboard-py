@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 import pandas as pd
 
@@ -91,10 +91,30 @@ class SourceSpec:
 
 SOURCE_SPECS = (
     SourceSpec("sp500", "S&P 500", "sp500_dash_plotly_company_map.csv", "sp500_companies.csv", "company_map"),
-    SourceSpec("msci_canada", "MSCI Canada", "msci_canada_dash_plotly_company_map.csv", "msci_canada_companies.csv", "msci_holdings"),
-    SourceSpec("msci_japan", "MSCI Japan", "msci_japan_dash_plotly_company_map.csv", "msci_japan_companies.csv", "msci_holdings"),
-    SourceSpec("stoxx_europe_600", "STOXX Europe 600", "stoxx-600.csv", "stoxx_europe_600_companies.csv", "company_map"),
-    SourceSpec("emerging_markets", "MSCI Emerging Markets", "msci-emering-markets.csv", "emerging_markets_companies.csv", "company_map"),
+    SourceSpec(
+        "msci_canada",
+        "MSCI Canada",
+        "msci_canada_dash_plotly_company_map.csv",
+        "msci_canada_companies.csv",
+        "msci_holdings",
+    ),
+    SourceSpec(
+        "msci_japan",
+        "MSCI Japan",
+        "msci_japan_dash_plotly_company_map.csv",
+        "msci_japan_companies.csv",
+        "msci_holdings",
+    ),
+    SourceSpec(
+        "stoxx_europe_600", "STOXX Europe 600", "stoxx-600.csv", "stoxx_europe_600_companies.csv", "company_map"
+    ),
+    SourceSpec(
+        "emerging_markets",
+        "MSCI Emerging Markets",
+        "msci-emering-markets.csv",
+        "emerging_markets_companies.csv",
+        "company_map",
+    ),
 )
 
 
@@ -172,7 +192,15 @@ def _base_company_row(spec: SourceSpec, source_row_number: int) -> dict[str, obj
     }
 
 
-def _append_excluded_row(spec: SourceSpec, excluded_rows: list[dict[str, object]], source_row_number: int, ticker: str, security_name: str, asset_class: str, reason: str) -> None:
+def _append_excluded_row(
+    spec: SourceSpec,
+    excluded_rows: list[dict[str, object]],
+    source_row_number: int,
+    ticker: str,
+    security_name: str,
+    asset_class: str,
+    reason: str,
+) -> None:
     excluded_rows.append(
         {
             "index_id": spec.index_id,
@@ -269,8 +297,12 @@ def _normalize_msci_holdings_source(df: pd.DataFrame, spec: SourceSpec) -> tuple
                 "shares": _to_float(row.get("quantity")),
                 "country": _clean_text(row.get("map_country") or row.get("headquarters_country")),
                 "iso_alpha3": _clean_text(row.get("map_iso_alpha3")),
-                "tax_residence_country": _clean_text(row.get("tax_residence_country") or row.get("map_country") or row.get("headquarters_country")),
-                "tax_residence_iso_alpha3": _clean_text(row.get("tax_residence_iso_alpha3") or row.get("map_iso_alpha3")),
+                "tax_residence_country": _clean_text(
+                    row.get("tax_residence_country") or row.get("map_country") or row.get("headquarters_country")
+                ),
+                "tax_residence_iso_alpha3": _clean_text(
+                    row.get("tax_residence_iso_alpha3") or row.get("map_iso_alpha3")
+                ),
                 "tax_country_basis": _clean_text(row.get("tax_country_basis")),
                 "tax_country_confidence": _clean_text(row.get("tax_country_confidence")) or "proxy_only",
                 "notes": _clean_text(row.get("notes")),
@@ -296,15 +328,20 @@ def _normalize_source(spec: SourceSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
     normalized_df["is_duplicate_security"] = company_keys.duplicated(keep=False)
 
     if normalized_df["iso_alpha3"].fillna("").astype(str).str.strip().eq("").any():
-        missing_rows = normalized_df.loc[normalized_df["iso_alpha3"].fillna("").astype(str).str.strip().eq(""), ["source_file", "source_row_number"]]
-        raise ValueError(f"Missing iso_alpha3 in normalized rows for {spec.index_id}: {missing_rows.to_dict(orient='records')}")
+        missing_rows = normalized_df.loc[
+            normalized_df["iso_alpha3"].fillna("").astype(str).str.strip().eq(""), ["source_file", "source_row_number"]
+        ]
+        raise ValueError(
+            f"Missing iso_alpha3 in normalized rows for {spec.index_id}: {missing_rows.to_dict(orient='records')}"
+        )
     if normalized_df["tax_residence_iso_alpha3"].fillna("").astype(str).str.strip().eq("").any():
         missing_rows = normalized_df.loc[
             normalized_df["tax_residence_iso_alpha3"].fillna("").astype(str).str.strip().eq(""),
             ["source_file", "source_row_number"],
         ]
         raise ValueError(
-            f"Missing tax_residence_iso_alpha3 in normalized rows for {spec.index_id}: {missing_rows.to_dict(orient='records')}"
+            f"Missing tax_residence_iso_alpha3 in normalized rows for {spec.index_id}: "
+            f"{missing_rows.to_dict(orient='records')}"
         )
     return normalized_df, excluded_df.reindex(columns=EXCLUDED_COLUMNS)
 
@@ -368,14 +405,18 @@ def run_cleaning() -> dict[str, list[Path]]:
         aggregated_paths.append(aggregated_path)
         all_aggregated_frames.append(aggregated_df)
 
-    combined_excluded = pd.concat(excluded_frames, ignore_index=True) if excluded_frames else pd.DataFrame(columns=EXCLUDED_COLUMNS)
+    combined_excluded = (
+        pd.concat(excluded_frames, ignore_index=True) if excluded_frames else pd.DataFrame(columns=EXCLUDED_COLUMNS)
+    )
     combined_excluded = combined_excluded.reindex(columns=EXCLUDED_COLUMNS)
     excluded_path = CLEANED_DIR / "excluded_non_company_rows.csv"
     combined_excluded.to_csv(excluded_path, index=False)
     cleaned_paths.append(excluded_path)
 
     combined_aggregated = pd.concat(all_aggregated_frames, ignore_index=True).reindex(columns=AGGREGATED_COLUMNS)
-    combined_aggregated = combined_aggregated.sort_values(["index_id", "country", "tax_residence_country"]).reset_index(drop=True)
+    combined_aggregated = combined_aggregated.sort_values(["index_id", "country", "tax_residence_country"]).reset_index(
+        drop=True
+    )
     combined_aggregated_path = AGGREGATED_DIR / "all_indices_country_counts.csv"
     combined_aggregated.to_csv(combined_aggregated_path, index=False)
     aggregated_paths.append(combined_aggregated_path)
@@ -383,7 +424,9 @@ def run_cleaning() -> dict[str, list[Path]]:
     return {
         "cleaned": cleaned_paths,
         "aggregated": aggregated_paths,
-        "preserved_raw_only": [RAW_DIR / filename for filename in PRESERVED_RAW_ONLY_FILES if (RAW_DIR / filename).exists()],
+        "preserved_raw_only": [
+            RAW_DIR / filename for filename in PRESERVED_RAW_ONLY_FILES if (RAW_DIR / filename).exists()
+        ],
     }
 
 
