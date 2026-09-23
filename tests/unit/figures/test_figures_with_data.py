@@ -33,15 +33,22 @@ def test_price_figure_has_one_trace(synthetic_daily_prices: pd.Series) -> None:
     assert figure.layout.yaxis.type == "log"
 
 
-def test_price_figure_has_rangeslider_and_rangeselector_by_default(synthetic_daily_prices: pd.Series) -> None:
+def test_price_figure_has_rangeslider_by_default(synthetic_daily_prices: pd.Series) -> None:
     figure = build_price_figure(synthetic_daily_prices)
     assert figure.layout.xaxis.rangeslider.visible is True
-    assert figure.layout.xaxis.rangeselector.buttons is not None
 
 
 def test_price_figure_without_range_controls(synthetic_daily_prices: pd.Series) -> None:
     figure = build_price_figure(synthetic_daily_prices, show_range_controls=False)
     assert figure.layout.xaxis.rangeslider.visible is False
+
+
+def test_price_figure_with_explicit_visible_range(synthetic_daily_prices: pd.Series) -> None:
+    start = synthetic_daily_prices.index[-100]
+    end = synthetic_daily_prices.index[-1]
+    figure = build_price_figure(synthetic_daily_prices, visible_range=(start, end))
+    assert figure.layout.xaxis.autorange is False
+    assert figure.layout.xaxis.range is not None
 
 
 def test_price_figure_with_regression_and_moving_average_overlays(synthetic_daily_prices: pd.Series) -> None:

@@ -1,10 +1,28 @@
-"""Kurschart-Baustein: Linear/Log-Umschalter mit Gueltigkeitspruefung, native
-Plotly-Zeitbereichssteuerung (Range Slider + Schnellwahl), sowie gleichzeitig
-aktivierbare Regressions- und SMA-Overlays und ein optionaler Drawdown-Layer.
-Referenzimplementierung fuer das AIO-Muster mit Pattern-Matching-Callback
-(CLAUDE.md: 'Callbacks nutzen Pattern-Matching'): der Callback wird einmal auf
-Klassenebene registriert und bedient alle Instanzen ueber MATCH. Die
-Regressions-/SMA-/Drawdown-Berechnung laeuft in analytics/, dieser Baustein
+"""Kurschart-Baustein: Linear/Log-Umschalter mit Gueltigkeitspruefung, eigene
+Zeitbereichs-Buttons (verankert am letzten tatsaechlich verfuegbaren Datenpunkt der
+Reihe, nicht am heutigen Datum) plus synchronem Plotly-Range-Slider, sowie
+gleichzeitig aktivierbare Regressions- und SMA-Overlays und ein optionaler
+Drawdown-Layer. Referenzimplementierung fuer das AIO-Muster mit
+Pattern-Matching-Callbacks (CLAUDE.md: 'Callbacks nutzen Pattern-Matching').
+
+Zwei getrennte Callbacks statt einem grossen:
+- `_update_range_state` ist die einzige Quelle der Wahrheit fuer den aktuell
+  sichtbaren Zeitausschnitt (chartState). Er reagiert auf Klicks auf die
+  Zeitbereichs-Buttons und auf manuelles Ziehen des Range-Sliders
+  (`relayoutData`) und schreibt das Ergebnis in einen `dcc.Store`.
+- `_update_figure` liest diesen Store zusammen mit Achsen-/Overlay-Auswahl und
+  rendert die Figur neu. Er haengt NICHT an `relayoutData`, damit das Setzen
+  einer neuen Figur nicht wieder einen Relayout-Callback ausloest (sonst
+  Rueckkopplungsschleife zwischen Output(figure) und Input(relayoutData)).
+
+Beide Callbacks haben `prevent_initial_call=True`: Pattern-Matching-Callbacks
+feuern sonst automatisch einmal, sobald eine passende Komponente neu auf der
+Seite erscheint (z. B. bei jedem Produktwechsel) -- dabei ist `ctx.triggered_id`
+None, was ohne dieses Flag zu einem Serverfehler fuehrte und alle drei
+Bedienelemente unzuverlaessig wirken liess. Die Startfigur kommt bereits fertig
+aus `__init__`, ein Callback-Aufruf beim Mounten ist also nie noetig.
+
+Die Regressions-/SMA-/Drawdown-Berechnung laeuft in analytics/, dieser Baustein
 orchestriert nur und ruft die reine Figure-Funktion auf (Trennung von
 Berechnungslogik und Render-Komponente)."""
 
@@ -18,6 +36,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import MATCH, Input, Output, callback, ctx, dcc, html
 from dash.development.base_component import Component
+from dash.exceptions import PreventUpdate
 
 from findash.analytics.drawdown import drawdown_series
 from findash.analytics.moving_average import simple_moving_average
@@ -32,7 +51,18 @@ _REGRESSION_TYPES: dict[str, TrendType] = {
     "Exponentielle Regression": TrendType.EXPONENTIAL,
 }
 _DRAWDOWN_VALUE = "drawdown"
-_LOG_DISABLED_HINT = "Logarithmische Darstellung nicht moeglich: Kurswerte <= 0 im Datensatz."
+_LOG_DISABLED_HINT = "Logarithmische Darstellung nicht moeglich: Kurswerte <= 0 im gewaehlten Zeitraum."
+
+_RANGE_PRESET_ORDER = ("1M", "3M", "6M", "5J", "10J", "Max")
+_RANGE_PRESET_OFFSETS: dict[str, pd.DateOffset | None] = {
+    "1M": pd.DateOffset(months=1),
+    "3M": pd.DateOffset(months=3),
+    "6M": pd.DateOffset(months=6),
+    "5J": pd.DateOffset(years=5),
+    "10J": pd.DateOffset(years=10),
+    "Max": None,
+}
+_DEFAULT_RANGE_STATE: dict[str, object] = {"start": None, "end": None, "active_preset": "Max"}
 
 
 class KurschartAIO(dbc.Card):
@@ -56,6 +86,17 @@ class KurschartAIO(dbc.Card):
         analysis_info = staticmethod(
             lambda aio_id: {"component": "KurschartAIO", "subcomponent": "analysis_info", "aio_id": aio_id}
         )
+        range_state = staticmethod(
+            lambda aio_id: {"component": "KurschartAIO", "subcomponent": "range_state", "aio_id": aio_id}
+        )
+        range_button = staticmethod(
+            lambda aio_id, preset: {
+                "component": "KurschartAIO",
+                "subcomponent": "range_button",
+                "aio_id": aio_id,
+                "preset": preset,
+            }
+        )
 
     _providers: dict[str, PriceProvider] = {}
 
@@ -75,8 +116,29 @@ class KurschartAIO(dbc.Card):
             className="mb-3",
             children=dbc.CardBody(
                 [
+                    dcc.Store(id=self.ids.range_state(aio_id), data=dict(_DEFAULT_RANGE_STATE)),
                     dbc.Row(
                         [
+                            dbc.Col(
+                                [
+                                    html.Div("Zeitraum", className="text-body-secondary small mb-1"),
+                                    dbc.ButtonGroup(
+                                        [
+                                            dbc.Button(
+                                                preset,
+                                                id=self.ids.range_button(aio_id, preset),
+                                                size="sm",
+                                                color="primary",
+                                                outline=True,
+                                                active=(preset == "Max"),
+                                            )
+                                            for preset in _RANGE_PRESET_ORDER
+                                        ],
+                                    ),
+                                ],
+                                xs=12,
+                                className="mb-2",
+                            ),
                             dbc.Col(
                                 [
                                     html.Div("Achse", className="text-body-secondary small"),
@@ -154,6 +216,48 @@ class KurschartAIO(dbc.Card):
         )
 
     @callback(
+        Output(ids.range_state(MATCH), "data"),
+        Output(ids.range_button(MATCH, "1M"), "active"),
+        Output(ids.range_button(MATCH, "3M"), "active"),
+        Output(ids.range_button(MATCH, "6M"), "active"),
+        Output(ids.range_button(MATCH, "5J"), "active"),
+        Output(ids.range_button(MATCH, "10J"), "active"),
+        Output(ids.range_button(MATCH, "Max"), "active"),
+        Input(ids.range_button(MATCH, "1M"), "n_clicks"),
+        Input(ids.range_button(MATCH, "3M"), "n_clicks"),
+        Input(ids.range_button(MATCH, "6M"), "n_clicks"),
+        Input(ids.range_button(MATCH, "5J"), "n_clicks"),
+        Input(ids.range_button(MATCH, "10J"), "n_clicks"),
+        Input(ids.range_button(MATCH, "Max"), "n_clicks"),
+        Input(ids.graph(MATCH), "relayoutData"),
+        prevent_initial_call=True,
+    )
+    def _update_range_state(
+        _click_1m: int | None,
+        _click_3m: int | None,
+        _click_6m: int | None,
+        _click_5y: int | None,
+        _click_10y: int | None,
+        _click_max: int | None,
+        relayout_data: dict[str, object] | None,
+    ) -> tuple[object, ...]:
+        if ctx.triggered_id is None:
+            raise PreventUpdate
+
+        aio_id = ctx.triggered_id["aio_id"]
+        prices = KurschartAIO._providers[aio_id]()
+
+        if ctx.triggered_id.get("subcomponent") == "range_button":
+            preset = ctx.triggered_id["preset"]
+            state = _range_state_for_preset(prices, preset)
+        else:
+            bounds = _parse_relayout_range(relayout_data)
+            state = _range_state_payload(bounds, active_preset=None)
+
+        active_flags = tuple(state["active_preset"] == preset for preset in _RANGE_PRESET_ORDER)
+        return (state, *active_flags)
+
+    @callback(
         Output(ids.graph(MATCH), "figure"),
         Output(ids.analysis_info(MATCH), "children"),
         Output(ids.y_scale(MATCH), "options"),
@@ -162,23 +266,26 @@ class KurschartAIO(dbc.Card):
         Input(ids.regressions(MATCH), "value"),
         Input(ids.moving_averages(MATCH), "value"),
         Input(ids.drawdown_toggle(MATCH), "value"),
-        Input(ids.graph(MATCH), "relayoutData"),
+        Input(ids.range_state(MATCH), "data"),
+        prevent_initial_call=True,
     )
     def _update_figure(
-        y_scale: str,
+        y_scale_value: str,
         regression_labels: list[str] | None,
         ma_windows: list[int] | None,
         drawdown_selected: list[str] | None,
-        relayout_data: dict[str, object] | None,
+        range_state_data: dict[str, object] | None,
     ) -> tuple[go.Figure, list[Component], list[dict[str, object]], str]:
+        if ctx.triggered_id is None:
+            raise PreventUpdate
+
         aio_id = ctx.triggered_id["aio_id"]
         provider = KurschartAIO._providers[aio_id]
         prices = provider()
 
-        log_allowed = _is_log_allowed(prices)
-        effective_y_scale = y_scale if (y_scale != "log" or log_allowed) else "linear"
-
-        visible_prices = _filter_to_visible_range(prices, relayout_data)
+        visible_prices = _slice_to_range(prices, range_state_data)
+        log_allowed = _is_log_allowed(visible_prices)
+        effective_y_scale = y_scale_value if (y_scale_value != "log" or log_allowed) else "linear"
 
         regression_traces: dict[str, pd.Series] = {}
         analysis_rows: list[Component] = []
@@ -206,6 +313,7 @@ class KurschartAIO(dbc.Card):
             regression_traces=regression_traces,
             moving_average_traces=moving_average_traces,
             drawdown=drawdown,
+            visible_range=_range_bounds(range_state_data),
         )
 
         hint = "" if log_allowed else _LOG_DISABLED_HINT
@@ -224,13 +332,44 @@ def _y_scale_options(log_allowed: bool) -> list[dict[str, object]]:
     ]
 
 
-def _filter_to_visible_range(prices: pd.Series, relayout_data: dict[str, object] | None) -> pd.Series:
-    """Grenzt die Preisreihe auf den aktuell ueber Range Slider/Schnellwahl
-    gewaehlten Ausschnitt ein, ausgelesen aus Plotlys relayoutData. Ohne
-    Auswahl (Erststart, 'Max') bleibt die volle Reihe erhalten."""
+def _preset_range(prices: pd.Series, preset: str) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    """Berechnet den Zeitbereich fuer einen Schnellwahl-Button relativ zum letzten
+    tatsaechlich verfuegbaren Datenpunkt der Reihe (nicht dem heutigen Datum),
+    kalenderkorrekt ueber `pandas.DateOffset` (keine festen Tageszahlen). `None`
+    bedeutet 'Max' (voller Bereich, kein expliziter Ausschnitt noetig)."""
+
+    clean = pd.to_numeric(prices, errors="coerce").dropna().sort_index()
+    if clean.empty:
+        return None
+    end = pd.Timestamp(clean.index.max())
+    offset = _RANGE_PRESET_OFFSETS.get(preset)
+    if offset is None:
+        return None
+    start = max(end - offset, pd.Timestamp(clean.index.min()))
+    return start, end
+
+
+def _range_state_for_preset(prices: pd.Series, preset: str) -> dict[str, object]:
+    bounds = _preset_range(prices, preset)
+    return _range_state_payload(bounds, active_preset=preset)
+
+
+def _range_state_payload(
+    bounds: tuple[pd.Timestamp, pd.Timestamp] | None, active_preset: str | None
+) -> dict[str, object]:
+    if bounds is None:
+        return {"start": None, "end": None, "active_preset": active_preset}
+    start, end = bounds
+    return {"start": start.isoformat(), "end": end.isoformat(), "active_preset": active_preset}
+
+
+def _parse_relayout_range(relayout_data: dict[str, object] | None) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    """Liest den vom Nutzer per Range-Slider-Drag gewaehlten Zeitausschnitt aus
+    Plotlys relayoutData. `None`, wenn kein expliziter Ausschnitt enthalten ist
+    (z. B. Autorange-Reset per Doppelklick)."""
 
     if not relayout_data:
-        return prices
+        return None
 
     start = relayout_data.get("xaxis.range[0]") or relayout_data.get("xaxis2.range[0]")
     end = relayout_data.get("xaxis.range[1]") or relayout_data.get("xaxis2.range[1]")
@@ -239,14 +378,37 @@ def _filter_to_visible_range(prices: pd.Series, relayout_data: dict[str, object]
         if isinstance(range_pair, list) and len(range_pair) == 2:
             start, end = range_pair
     if start is None or end is None:
-        return prices
+        return None
 
     try:
-        start_ts = pd.to_datetime(start, utc=True)
-        end_ts = pd.to_datetime(end, utc=True)
+        return pd.to_datetime(start, utc=True), pd.to_datetime(end, utc=True)
     except (ValueError, TypeError):
-        return prices
-    return prices[(prices.index >= start_ts) & (prices.index <= end_ts)]
+        return None
+
+
+def _slice_to_range(prices: pd.Series, range_state_data: dict[str, object] | None) -> pd.Series:
+    """Grenzt die (zuvor sortierte) Preisreihe auf den im chartState hinterlegten
+    Zeitausschnitt ein. Die volle Reihe bleibt dabei unveraendert -- der
+    Ausschnitt ist stets eine abgeleitete Ansicht."""
+
+    sorted_prices = prices.sort_index()
+    bounds = _range_bounds(range_state_data)
+    if bounds is None:
+        return sorted_prices
+    start, end = bounds
+    return sorted_prices[(sorted_prices.index >= start) & (sorted_prices.index <= end)]
+
+
+def _range_bounds(range_state_data: dict[str, object] | None) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    if not range_state_data:
+        return None
+    start, end = range_state_data.get("start"), range_state_data.get("end")
+    if start is None or end is None:
+        return None
+    try:
+        return pd.to_datetime(start, utc=True), pd.to_datetime(end, utc=True)
+    except (ValueError, TypeError):
+        return None
 
 
 def _analysis_row(label: str, result: TrendResult, prices: pd.Series) -> Component:

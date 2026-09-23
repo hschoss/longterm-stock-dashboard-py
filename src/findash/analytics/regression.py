@@ -37,7 +37,7 @@ def fit_trend(prices: pd.Series, trend_type: TrendType) -> TrendResult:
     Wirft ValueError bei weniger als zwei gueltigen, positiven Preispunkten.
     """
 
-    working = pd.to_numeric(prices, errors="coerce").dropna()
+    working = pd.to_numeric(prices, errors="coerce").dropna().sort_index()
     working = working[working > 0]
     if len(working) < 2:
         raise ValueError("Mindestens zwei positive Preispunkte werden fuer eine Regression benoetigt.")

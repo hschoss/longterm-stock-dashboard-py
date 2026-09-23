@@ -1,9 +1,12 @@
 """Kurschart mit linearer/logarithmischer Y-Achse, optionalen Overlay-Layern
-(Regressionen, gleitende Durchschnitte), optionalem Drawdown-Panel und nativer
-Plotly-Zeitbereichssteuerung (Range Slider + Schnellwahl-Buttons -- Standardloesung
-des Oekosystems statt einer eigenen UI-Komponente). Reine Funktion: alle
-Overlay-Daten kommen fertig berechnet herein, hier wird nur gerendert (Trennung von
-Berechnungslogik und Render-Komponente)."""
+(Regressionen, gleitende Durchschnitte), optionalem Drawdown-Panel und einem
+Plotly-Range-Slider. Der sichtbare Zeitausschnitt kommt als expliziter
+Datumsbereich herein (berechnet von KurschartAIO relativ zum letzten
+verfuegbaren Datenpunkt der Reihe, nicht dem heutigen Datum) statt ueber
+Plotlys eingebauten `rangeselector`, der Datumsbezuege nicht zuverlaessig
+deterministisch offenlegt. Reine Funktion: alle Overlay-Daten und der
+Zeitausschnitt kommen fertig berechnet herein, hier wird nur gerendert
+(Trennung von Berechnungslogik und Render-Komponente)."""
 
 from __future__ import annotations
 
@@ -14,17 +17,6 @@ from plotly.subplots import make_subplots
 from findash.app.figures._common import apply_mobile_layout, empty_figure
 from findash.core.domain import YScale
 
-_RANGE_SELECTOR_BUTTONS = [
-    {"count": 1, "label": "1M", "step": "month", "stepmode": "backward"},
-    {"count": 3, "label": "3M", "step": "month", "stepmode": "backward"},
-    {"count": 6, "label": "6M", "step": "month", "stepmode": "backward"},
-    {"count": 1, "label": "1J", "step": "year", "stepmode": "backward"},
-    {"count": 3, "label": "3J", "step": "year", "stepmode": "backward"},
-    {"count": 5, "label": "5J", "step": "year", "stepmode": "backward"},
-    {"count": 10, "label": "10J", "step": "year", "stepmode": "backward"},
-    {"step": "all", "label": "Max"},
-]
-
 
 def build_price_figure(
     prices: pd.Series,
@@ -34,8 +26,9 @@ def build_price_figure(
     moving_average_traces: dict[str, pd.Series] | None = None,
     drawdown: pd.Series | None = None,
     show_range_controls: bool = True,
+    visible_range: tuple[pd.Timestamp, pd.Timestamp] | None = None,
 ) -> go.Figure:
-    clean = pd.to_numeric(prices, errors="coerce").dropna()
+    clean = pd.to_numeric(prices, errors="coerce").dropna().sort_index()
     if clean.empty:
         return empty_figure("Keine Kursdaten verfuegbar.")
 
@@ -52,7 +45,7 @@ def build_price_figure(
     )
 
     for label, series in (moving_average_traces or {}).items():
-        trace_series = series.dropna()
+        trace_series = series.dropna().sort_index()
         if trace_series.empty:
             continue
         figure.add_trace(
@@ -67,7 +60,7 @@ def build_price_figure(
         )
 
     for label, series in (regression_traces or {}).items():
-        trace_series = series.dropna()
+        trace_series = series.dropna().sort_index()
         if trace_series.empty:
             continue
         figure.add_trace(
@@ -81,9 +74,14 @@ def build_price_figure(
             **price_row,
         )
 
+    x_range_kwargs: dict[str, object] = {}
+    if visible_range is not None:
+        start, end = visible_range
+        x_range_kwargs = {"range": [start, end], "autorange": False}
+
     if show_drawdown:
         assert drawdown is not None
-        dd = drawdown.dropna()
+        dd = drawdown.dropna().sort_index()
         figure.add_trace(
             go.Scatter(
                 x=dd.index,
@@ -98,18 +96,18 @@ def build_price_figure(
         )
         figure.update_yaxes(type=str(y_scale), title_text="Kurs", row=1, col=1)
         figure.update_yaxes(title_text="Drawdown %", row=2, col=1)
-        figure.update_xaxes(rangeslider={"visible": False}, row=1, col=1)
+        figure.update_xaxes(rangeslider={"visible": False}, row=1, col=1, **x_range_kwargs)
         figure.update_xaxes(
             rangeslider={"visible": show_range_controls, "thickness": 0.06},
-            rangeselector={"buttons": _RANGE_SELECTOR_BUTTONS} if show_range_controls else None,
             row=2,
             col=1,
+            **x_range_kwargs,
         )
     else:
         figure.update_layout(yaxis_type=str(y_scale))
         figure.update_xaxes(
             rangeslider={"visible": show_range_controls, "thickness": 0.08},
-            rangeselector={"buttons": _RANGE_SELECTOR_BUTTONS} if show_range_controls else None,
+            **x_range_kwargs,
         )
 
     figure.update_layout(title=title, dragmode=False)
