@@ -139,3 +139,51 @@ Abschnitt „Arbeitsweise"). Jede Zeile nennt die Annahme, den Grund und ab wann
   selbst wird nicht aktiv zurueckgesetzt, um einen Circular-Output-Konflikt
   (Log/Linear-Auswahl ist gleichzeitig Input und Output desselben Callbacks) zu
   vermeiden -- in der Praxis unkritisch, da echte Kurse nie <= 0 sind.
+
+## Kurschart: Bugfix Y-Achse/Zeitraum/SMA (2026-09-23)
+
+- **Ursache war ein einzelner Absturz, nicht drei unabhaengige Fehler.** Der
+  Nutzer meldete Y-Achsen-Umschalter, Zeitbereichs-Buttons und SMA-Checkboxen
+  als "nicht zuverlaessig". Ein echter, im Server-Log erfasster Traceback
+  zeigte die Ursache: `ctx.triggered_id["aio_id"]` schlug mit
+  `TypeError: 'NoneType' object is not subscriptable` fehl. Dash feuert
+  Pattern-Matching-Callbacks automatisch einmal, sobald eine passende
+  Komponente neu auf der Seite erscheint (bei uns: jeder Produktseitenaufruf);
+  dabei ist `ctx.triggered_id` `None`. Da alle vier Bedienelemente denselben
+  Callback speisten, liess dessen Absturz alle drei gemeldeten Funktionen
+  gleichzeitig ausfallen. Fix: `prevent_initial_call=True` auf beiden
+  Callbacks (die Startfigur kommt ohnehin fertig aus `__init__`) plus ein
+  defensiver `PreventUpdate`-Guard. Verifiziert durch Nachbau von Dashs
+  Callback-Wire-Protokoll gegen den laufenden Server (nicht nur Unit-Tests):
+  Log-Umschaltung, Klick auf "1M" und gleichzeitiges Aktivieren von SMA 20+50
+  liefern jetzt korrekte Antworten ohne Serverfehler.
+- **Frueherer Eintrag oben ("Range Slider + Schnellwahl (native
+  Plotly-Loesung)") ist ueberholt.** Plotlys eingebauter `rangeselector` mit
+  `stepmode: backward` liess sich nicht zuverlaessig als "relativ zum letzten
+  Datenpunkt der Reihe" nachweisen (Doku mehrdeutig, kein Browser zum Testen
+  verfuegbar) und der Nutzer verlangte diese Garantie explizit. Ersetzt durch
+  eigene `dbc.Button`-Presets (1M/3M/6M/5J/10J/Max: engere Liste als beim
+  ersten Ausbau, siehe Fehlerbericht), deren Zeitraum serverseitig aus
+  `prices.index.max()` plus kalenderkorrektem `pandas.DateOffset` berechnet
+  wird (keine festen Tageszahlen wie 30/365). Der native `rangeselector` wurde
+  komplett entfernt, der Range Slider selbst (Ziehen der Griffe) bleibt.
+- **Zeitraum-State in einem eigenen `dcc.Store`, zweiter Callback.** Der
+  bisherige eine Callback hing an `Input(graph, "relayoutData")` UND schrieb
+  `Output(graph, "figure")` -- jede Figur-Aktualisierung (auch fuer y_scale/
+  SMA/Regressionen) konnte durch das Neuzeichnen selbst ein Relayout-Event
+  ausloesen und den Callback erneut anstossen. Aufgeteilt in
+  `_update_range_state` (einzige Quelle der Wahrheit fuer den sichtbaren
+  Zeitausschnitt: reagiert auf Preset-Klicks und manuelles Ziehen, schreibt
+  in den Store, steuert welcher Button als "aktiv" markiert ist -- bei
+  manuellem Ziehen wird kein Preset mehr hervorgehoben) und `_update_figure`
+  (liest Store + Achsen-/Overlay-Controls, rendert; haengt nicht mehr an
+  `relayoutData`). Ueberpruefen: falls spaeter ein Rueckkopplungsproblem
+  zwischen den beiden Callbacks auftritt (z. B. durch Plotlys eigenes
+  Relayout nach `Plotly.react()`), zusaetzlich `uirevision` auf der Figur
+  erwaegen.
+- **`fit_trend` und `simple_moving_average` sortieren jetzt selbst nach
+  Datum.** Der Nutzer verlangte robuste, sortierte Zeitreihenverarbeitung als
+  harte Anforderung. Die DB-Abfrage liefert zwar bereits sortierte Daten
+  (`ORDER BY ts`), die Analytics-Funktionen sollen sich darauf aber nicht
+  verlassen, da sie laut Baukasten-Prinzip unabhaengig von der Aufrufer-Seite
+  korrekt sein muessen.
