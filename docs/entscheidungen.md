@@ -187,3 +187,13 @@ Abschnitt „Arbeitsweise"). Jede Zeile nennt die Annahme, den Grund und ab wann
   (`ORDER BY ts`), die Analytics-Funktionen sollen sich darauf aber nicht
   verlassen, da sie laut Baukasten-Prinzip unabhaengig von der Aufrufer-Seite
   korrekt sein muessen.
+
+## Dashboard-Plattform (`~/gh/dashboard-module`, 2026-09-23)
+
+- **Plattform-Gerüst als eigenes uv-Projekt neben Findash.** Auf ausdrücklichen
+  Wunsch des Nutzers wurde die Vorlage `ABSTRACT_STRUCTURE.md` als eigenes
+  Repository `~/gh/dashboard-module` umgesetzt, außerhalb der Phasen aus `docs/auftrag.md`.
+  Findash unter `src/findash/` bleibt unverändert. Neue Abhängigkeiten (FastAPI,
+  uvicorn, httpx) gelten nur dort. Details und weitere Annahmen stehen in
+  der `README.md` dieses Repositorys, Abschnitt „Entscheidungen und Annahmen“.
+  Überprüfen: sobald Findash nach `dashboards/finance/` umziehen soll.
