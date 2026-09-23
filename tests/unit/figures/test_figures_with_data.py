@@ -6,7 +6,8 @@ import plotly.graph_objects as go
 from findash.analytics.comparison import align_series
 from findash.analytics.drawdown import drawdown_series
 from findash.analytics.funnel import holding_period_return_stats
-from findash.analytics.returns import annual_returns
+from findash.analytics.returns import annual_returns, simple_returns
+from findash.analytics.risk import rolling_annualized_volatility
 from findash.analytics.rolling import rolling_annualized_return
 from findash.analytics.savings_plan import simulate_savings_plan
 from findash.analytics.triangle import lump_sum_return_triangle
@@ -17,6 +18,7 @@ from findash.app.figures.holding_period_funnel import build_holding_period_funne
 from findash.app.figures.price import build_price_figure
 from findash.app.figures.return_triangle import build_return_triangle_figure
 from findash.app.figures.rolling_returns import build_rolling_returns_figure
+from findash.app.figures.rolling_volatility import build_rolling_volatility_figure
 from findash.app.figures.savings_plan import build_savings_plan_figure
 from findash.app.figures.trend_regression import build_trend_regression_figure
 from findash.core.domain import TrendType, YScale
@@ -47,6 +49,13 @@ def test_drawdown_figure(synthetic_daily_prices: pd.Series) -> None:
 def test_rolling_returns_figure(synthetic_daily_prices: pd.Series) -> None:
     series = {"10 Jahre": rolling_annualized_return(synthetic_daily_prices, 10)}
     figure = build_rolling_returns_figure(series)
+    assert len(figure.data) == 1
+
+
+def test_rolling_volatility_figure(synthetic_daily_prices: pd.Series) -> None:
+    returns = simple_returns(synthetic_daily_prices)
+    rolling = rolling_annualized_volatility(returns, window=252, periods_per_year=252)
+    figure = build_rolling_volatility_figure(rolling)
     assert len(figure.data) == 1
 
 

@@ -72,3 +72,39 @@ Abschnitt „Arbeitsweise"). Jede Zeile nennt die Annahme, den Grund und ab wann
 - **Ruff-Zeilenlänge auf 120 gesetzt** (statt zunächst 110). Grund: mehrere
   SQLAlchemy-Spaltendefinitionen und Dash-Layout-Aufrufe wurden bei 110 unnötig
   zerrissen; 120 ist noch lesbar und spart Umbrüche ohne Aussagekraft.
+
+## Baukastenmuster fuer Produkt-Detailseiten (2026-09-23)
+
+- **Python-natives Baukastenmuster statt Config-/Plugin-Dispatch.** Der Nutzer
+  wollte, dass jede Produkt-Detailseite aus derselben Liste wiederverwendbarer,
+  produktunabhaengiger Module besteht (Header, Kennzahlen, Charts, Datenqualitaet),
+  urspruenglich vorgeschlagen als eine Konfigurationsliste mit `chartType`/`dataKey`
+  und generischem Runtime-Dispatch. Das widerspricht `docs/auftrag.md` Abschnitt 4.3:
+  „Es gibt kein Plugin-System und keine YAML-Seitenkomposition. Ein neuer Baustein
+  ist ein neues Modul plus eine Zeile auf der Seite." Auf Rueckfrage hat sich der
+  Nutzer fuer die regelkonforme Variante entschieden: ein neuer generischer
+  `ChartCardAIO`-Baustein (`app/blocks/chart_card.py`) kapselt Card+Graph fuer eine
+  beliebige, bereits fertige `go.Figure`; die Seite (`app/pages/rueckschau.py`)
+  ruft ihn explizit als Python-Code mit unterschiedlichen Figuren auf (Drawdown,
+  rollierende Rendite, rollierende Volatilitaet, Renditeverteilung). Kein
+  String-basierter Dispatch, keine externe Konfigurationsdatei fuer die
+  Seitenkomposition. Das bisherige `DrawdownAIO` (Card-Wrapper nur fuer die
+  Drawdown-Figur) ist damit im generischen `ChartCardAIO` aufgegangen und wurde
+  geloescht.
+  Überprüfen: falls spaeter doch eine Laufzeit-Konfigurierbarkeit der
+  Seitenzusammensetzung gebraucht wird (z. B. Nutzer soll Module ein-/ausblenden
+  koennen), ist das ein bewusster Bruch mit Abschnitt 4.3 und muss explizit
+  freigegeben werden.
+- **Neuer Baustein `AssetHeaderAIO`** (`app/blocks/header.py`) fasst Produktname,
+  Symbol, den Hinweis „Keine Anlageberatung" und den Datenstand/letzten Sync in
+  einer Karte zusammen, konsistent zum bestehenden Card-Baukasten. Der App-weite
+  Statusbalken (`app/main.py`) zeigt „Keine Anlageberatung" weiterhin global; die
+  Wiederholung im Header ist gewollt (Nutzeranforderung), da sie im Kontext des
+  gerade betrachteten Produkts steht.
+- **Rollierende annualisierte Volatilitaet ergaenzt** (`analytics/risk.py:
+  rolling_annualized_volatility`, `app/figures/rolling_volatility.py`) als
+  weiteres Chart-Modul. War in `docs/auftrag.md` Abschnitt 8.2 als Baustein
+  vorgesehen, aber noch nicht gebaut. Fenstergroesse ist eine feste Anzahl
+  Beobachtungen (Standard: `periods_per_year`, also ein Handelsjahr), nicht wie bei
+  `rolling_annualized_return` ein Kalenderjahr-Fenster -- einfacher und fuer
+  Handelstagsdaten (keine Wochenend-/Feiertagsluecken) aequivalent.

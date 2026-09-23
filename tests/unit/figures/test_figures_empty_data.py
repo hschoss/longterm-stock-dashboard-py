@@ -14,6 +14,7 @@ from findash.app.figures.price import build_price_figure
 from findash.app.figures.return_triangle import build_return_triangle_figure
 from findash.app.figures.returns_histogram import build_returns_histogram_figure
 from findash.app.figures.rolling_returns import build_rolling_returns_figure
+from findash.app.figures.rolling_volatility import build_rolling_volatility_figure
 from findash.app.figures.savings_plan import build_savings_plan_figure
 from findash.app.figures.trend_regression import build_trend_regression_figure
 from findash.app.figures.world_map import build_country_exposure_figure
@@ -41,6 +42,10 @@ def test_holding_period_funnel_figure_empty() -> None:
 
 def test_rolling_returns_figure_empty() -> None:
     assert isinstance(build_rolling_returns_figure({}), go.Figure)
+
+
+def test_rolling_volatility_figure_empty() -> None:
+    assert isinstance(build_rolling_volatility_figure(pd.Series(dtype=float)), go.Figure)
 
 
 def test_drawdown_figure_empty() -> None:

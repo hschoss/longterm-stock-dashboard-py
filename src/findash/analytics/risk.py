@@ -46,3 +46,15 @@ def expected_shortfall(returns: pd.Series, confidence: float = 0.95) -> float:
     if tail.empty:
         return float("nan")
     return float(-tail.mean())
+
+
+def rolling_annualized_volatility(returns: pd.Series, window: int, periods_per_year: int) -> pd.Series:
+    """Annualisierte Volatilitaet ueber ein gleitendes Fenster von `window`
+    Beobachtungen (docs/auftrag.md Abschnitt 8.2: 'Rollierende annualisierte
+    Volatilitaet'). NaN, solange das Fenster noch nicht voll ist."""
+
+    clean = returns.dropna()
+    if clean.empty:
+        return pd.Series(dtype=float, name="rolling_volatility")
+    rolling_std = clean.rolling(window=window, min_periods=window).std(ddof=1)
+    return (rolling_std * np.sqrt(periods_per_year)).rename("rolling_volatility")
