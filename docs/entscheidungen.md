@@ -108,3 +108,34 @@ Abschnitt „Arbeitsweise"). Jede Zeile nennt die Annahme, den Grund und ab wann
   Beobachtungen (Standard: `periods_per_year`, also ein Handelsjahr), nicht wie bei
   `rolling_annualized_return` ein Kalenderjahr-Fenster -- einfacher und fuer
   Handelstagsdaten (keine Wochenend-/Feiertagsluecken) aequivalent.
+
+## Kurschart: Analyse-Layer, erste Ausbaustufe (2026-09-23)
+
+- **Nur die vom Nutzer selbst vorgeschlagene "robuste Basis" umgesetzt, nicht den
+  vollen Katalog.** Die Anfrage listete einen sehr grossen Funktionsumfang
+  (EMA, gleitender Median, expanding mean, Bollinger-Baender, rollierende
+  Quantil-Baender, Sortino/Calmar/Beta, LOESS, eine mehrstufige Tabs-Bedienleiste
+  mit 5 Kategorien). Umgesetzt wurde nur die vom Nutzer selbst als ersten Schritt
+  benannte Teilmenge: Range Slider + Schnellwahl (native Plotly-Loesung statt
+  eigener Komponente), Log/Linear-Umschalter mit Gueltigkeitspruefung, lineare +
+  exponentielle Regression als Overlays, SMA-Overlays (Fenster aus
+  `config/analytics.yaml: moving_average_windows`), optionaler Drawdown-Layer.
+  Grund: CLAUDE.md verbietet "Abstraktion auf Vorrat ohne Rueckfrage"; der grosse
+  Restkatalog waere genau das. Ueberpruefen: sobald der Nutzer konkret weitere
+  Layer aus dem Katalog anfordert, jeweils einzeln als Overlay ergaenzen (neue
+  `analytics/`-Funktion + optionaler Trace in `build_price_figure`), nicht
+  vorab die ganze Tabs-Architektur bauen.
+- **Regressions-Fit folgt dem Range Slider, SMA/Drawdown nicht.** Regressionen
+  werden auf Basis der aktuell per Range Slider/Schnellwahl sichtbaren
+  Teilreihe geschaetzt (liest `relayoutData` aus dem `dcc.Graph`). SMA und
+  Drawdown werden dagegen immer auf der vollen Preisreihe berechnet, damit z. B.
+  SMA 200 am linken Rand einer eingezoomten Ansicht nicht durch fehlende
+  Vorlaufhistorie abgeschnitten wird -- Plotlys Range Slider ist ein reiner
+  Sichtausschnitt (Zoom), keine Datenfilterung.
+- **Log-Skala: Eingabe bleibt stehen, Chart faellt auf Linear zurueck.** Sind
+  Kurswerte <= 0 vorhanden, wird "Log" in den Radio-Buttons deaktiviert und ein
+  Hinweistext angezeigt; waehlt jemand dennoch "Log" (z. B. Restzustand vor einem
+  Datenwechsel), rendert die Figur linear statt zu fehlschlagen. Der Radio-Wert
+  selbst wird nicht aktiv zurueckgesetzt, um einen Circular-Output-Konflikt
+  (Log/Linear-Auswahl ist gleichzeitig Input und Output desselben Callbacks) zu
+  vermeiden -- in der Praxis unkritisch, da echte Kurse nie <= 0 sind.
