@@ -65,7 +65,11 @@ def _detail_modules(
     return [
         AssetHeaderAIO(asset, last_sync),
         KennzahlenAIO(prices, periods_per_year=periods_per_year, risk_free_rate=analytics_config.risk_free_rate),
-        KurschartAIO(lambda: prices, title=f"{asset['symbol']}: Kursverlauf"),
+        KurschartAIO(
+            lambda: prices,
+            title=f"{asset['symbol']}: Kursverlauf",
+            moving_average_windows=tuple(analytics_config.moving_average_windows),
+        ),
         ChartCardAIO(build_drawdown_figure(drawdown_series(prices), prices=prices)),
         ChartCardAIO(build_rolling_returns_figure(rolling_returns_by_window)),
         ChartCardAIO(

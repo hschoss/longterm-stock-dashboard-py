@@ -53,7 +53,7 @@ def _asset_card(asset: dict[str, object]) -> dbc.Col:
         change = float(prices.iloc[-1] / prices.iloc[-2] - 1.0) if len(prices) >= 2 else float("nan")
         change_text = f"{change * 100:+.2f}%" if change == change else ""
 
-    mini_figure = build_price_figure(prices.tail(252), title="")
+    mini_figure = build_price_figure(prices.tail(252), title="", show_range_controls=False)
     mini_figure.update_layout(height=110, showlegend=False, margin={"l": 0, "r": 0, "t": 0, "b": 0})
     mini_figure.update_xaxes(visible=False)
     mini_figure.update_yaxes(visible=False)
