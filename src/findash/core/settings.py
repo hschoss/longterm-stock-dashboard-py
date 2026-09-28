@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     source_database_url: str | None = None
     sync_overlap_days: int = 10
 
+    # Externer readonly-Dataserver (Mac mini im LAN, siehe hallo.md).
+    # Wenn nicht gesetzt, laufen die ETF-Seiten im "keine Verbindung"-Modus und
+    # zeigen sichtbar an, dass keine Marktdaten verfuegbar sind.
+    dataserver_url: str | None = None
+    dataserver_statement_timeout_ms: int = 15_000
+
     display_timezone: str = "Europe/Berlin"
 
     assets_config_path: Path = Path("config/assets.yaml")
