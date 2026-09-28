@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dashboard
+  labels:
+    app.kubernetes.io/name: findash
+    app.kubernetes.io/part-of: dashboard

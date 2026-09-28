@@ -1,0 +1,27 @@
+# Optional: Ingress-Beispiel fuer nginx-ingress. Anpassen (Host, TLS, Klassenname)
+# und nur anwenden, wenn ein Ingress-Controller im Cluster laeuft.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: findash
+  namespace: dashboard
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: findash.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: findash
+                port:
+                  number: 5000
+  # tls:
+  #   - hosts:
+  #       - findash.local
+  #     secretName: findash-tls
