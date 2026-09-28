@@ -68,5 +68,18 @@ def healthz() -> Response:
     return jsonify(status="ok")
 
 
+@server.get("/readyz")
+def readyz() -> Response:
+    """Bereitschaftsprobe fuer Kubernetes: erst `ready`, wenn Dataserver erreichbar ist."""
+
+    from findash.storage.dataserver import dataserver_healthy
+
+    ok = dataserver_healthy()
+    payload = {"status": "ok" if ok else "unavailable", "dataserver": ok}
+    response = jsonify(payload)
+    response.status_code = 200 if ok else 503
+    return response
+
+
 if __name__ == "__main__":
     app.run(debug=settings.debug, host="0.0.0.0", port=5000)
