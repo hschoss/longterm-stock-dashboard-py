@@ -11,3 +11,13 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+ABSTRACT_STRUCTURE.md
+architecture-goal.md
+STATUS.md 
+CLAUDE.md 
+
+hallo.md
+prompts.md
+STRUCTURE_PROMPT.md
+
